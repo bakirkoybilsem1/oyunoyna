@@ -24,11 +24,11 @@ export default function Admin() {
   const [form, setForm] = useState({ isim:'', slug:'', renk:'#33ccff', html_kodu:'', game_url:'' });
   const fileRef = useRef();
 
-  // 'fetch' ismini kullanma — global fetch ile çakışır!
   const loadOyunlar = async () => {
     const { data } = await supabase.from('oyunlar').select('*').order('created_at',{ascending:false});
     setOyunlar(data || []);
   };
+
   useEffect(() => { loadOyunlar(); }, []);
 
   const showMsg = (text, isOk=true) => { setMsg(text); setOk(isOk); setTimeout(()=>setMsg(''),4000); };
@@ -78,38 +78,31 @@ export default function Admin() {
     loadOyunlar();
   };
 
-  const p = { minHeight:'100vh', background:'linear-gradient(160deg,#0f0c29,#302b63)', fontFamily:"'Fredoka One',cursive", color:'white' };
   const inp = { width:'100%', padding:'12px 16px', borderRadius:12, border:'1px solid rgba(255,255,255,0.15)', background:'rgba(255,255,255,0.08)', color:'white', fontSize:'1rem', fontFamily:"'Fredoka One',cursive", outline:'none', boxSizing:'border-box' };
   const btnTab = (a) => ({ padding:'8px 20px', borderRadius:50, border:'none', cursor:'pointer', fontFamily:"'Fredoka One',cursive", fontWeight:700, background: a?'linear-gradient(135deg,#f093fb,#f5576c)':'rgba(255,255,255,0.1)', color: a?'white':'rgba(255,255,255,0.5)' });
 
   return (
-    <div style={p}>
+    <div style={{ minHeight:'100vh', background:'linear-gradient(160deg,#0f0c29,#302b63)', fontFamily:"'Fredoka One',cursive", color:'white' }}>
       <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet" />
       <div style={{ padding:'20px 28px', borderBottom:'1px solid rgba(255,255,255,0.1)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
         <h1 style={{ margin:0, fontSize:'1.8rem' }}>🎮 Admin Panel</h1>
         <a href="/" style={{ color:'rgba(255,255,255,0.5)', textDecoration:'none' }}>← Siteye Dön</a>
       </div>
-
       <div style={{ display:'flex', gap:8, padding:'16px 28px' }}>
         <button style={btnTab(tab==='list')} onClick={()=>setTab('list')}>📋 Oyunlar ({oyunlar.length})</button>
         <button style={btnTab(tab==='add')} onClick={()=>setTab('add')}>➕ Yeni Oyun</button>
       </div>
-
       {msg && <div style={{ margin:'0 28px 12px', padding:'12px 16px', borderRadius:12, background:ok?'rgba(79,209,197,0.15)':'rgba(245,87,108,0.15)', color:ok?'#4fd1c5':'#f5576c', border:`1px solid ${ok?'rgba(79,209,197,0.4)':'rgba(245,87,108,0.4)'}` }}>{msg}</div>}
-
       <div style={{ padding:'0 28px 40px' }}>
         {tab==='list' && (
           <div>
-            {oyunlar.length === 0 && <p style={{ color:'rgba(255,255,255,0.4)', marginTop:40, textAlign:'center' }}>Henüz oyun yok. ➕ Yeni Oyun ile ekle!</p>}
+            {oyunlar.length===0 && <p style={{ color:'rgba(255,255,255,0.4)', marginTop:40, textAlign:'center' }}>Henüz oyun yok. ➕ Yeni Oyun ile ekle!</p>}
             {oyunlar.map(o => (
               <div key={o.id} style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:16, padding:'16px 20px', display:'flex', alignItems:'center', gap:16, marginBottom:10 }}>
                 <div style={{ width:14, height:40, borderRadius:4, background:o.renk||'#33ccff', flexShrink:0 }} />
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontWeight:700, color:'white', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{o.isim}</div>
                   <div style={{ color:'rgba(255,255,255,0.35)', fontSize:'0.75rem' }}>/oyun/{o.slug}</div>
-                  <div style={{ color:'rgba(255,255,255,0.25)', fontSize:'0.7rem', marginTop:2 }}>
-                    {o.html_kodu ? (o.html_kodu.startsWith('http')?'🔗 URL':'📄 HTML') : '—'} {o.is_active?'✅':'❌'}
-                  </div>
                 </div>
                 <div style={{ display:'flex', gap:6 }}>
                   <a href={`/oyun/${o.slug}`} target="_blank" rel="noreferrer" style={{ padding:'6px 12px', borderRadius:8, textDecoration:'none', background:'rgba(79,209,197,0.15)', color:'#4fd1c5', border:'1px solid rgba(79,209,197,0.25)', fontSize:'0.85rem' }}>▶</a>
@@ -119,7 +112,6 @@ export default function Admin() {
             ))}
           </div>
         )}
-
         {tab==='add' && (
           <div style={{ maxWidth:520 }}>
             <div style={{ marginBottom:18 }}>
@@ -142,7 +134,6 @@ export default function Admin() {
                 ))}
               </div>
             </div>
-
             {uploadType==='file' && (
               <div style={{ marginBottom:18 }}>
                 <div onClick={()=>fileRef.current?.click()} style={{ padding:'36px 20px', borderRadius:16, textAlign:'center', border:'2px dashed rgba(255,255,255,0.2)', background:form.html_kodu?'rgba(79,209,197,0.08)':'rgba(255,255,255,0.04)', cursor:'pointer' }}>
@@ -161,7 +152,6 @@ export default function Admin() {
                 <input style={inp} value={form.game_url} onChange={e=>setForm(f=>({...f,game_url:e.target.value}))} placeholder="https://example.com/oyun" />
               </div>
             )}
-
             <button onClick={handleSave} disabled={saving} style={{ width:'100%', padding:'14px', borderRadius:14, border:'none', cursor:'pointer', background:'linear-gradient(135deg,#f093fb,#f5576c)', color:'white', fontSize:'1.1rem', fontFamily:"'Fredoka One',cursive", opacity:saving?0.6:1 }}>
               {saving ? '⏳ Kaydediliyor...' : '✅ Oyunu Kaydet'}
             </button>
