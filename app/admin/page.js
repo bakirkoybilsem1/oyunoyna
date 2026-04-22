@@ -24,11 +24,12 @@ export default function Admin() {
   const [form, setForm] = useState({ isim:'', slug:'', renk:'#33ccff', html_kodu:'', game_url:'' });
   const fileRef = useRef();
 
-  const fetch = async () => {
+  // 'fetch' ismini kullanma — global fetch ile çakışır!
+  const loadOyunlar = async () => {
     const { data } = await supabase.from('oyunlar').select('*').order('created_at',{ascending:false});
     setOyunlar(data || []);
   };
-  useEffect(() => { fetch(); }, []);
+  useEffect(() => { loadOyunlar(); }, []);
 
   const showMsg = (text, isOk=true) => { setMsg(text); setOk(isOk); setTimeout(()=>setMsg(''),4000); };
 
@@ -64,7 +65,7 @@ export default function Admin() {
       showMsg('✅ Oyun eklendi!');
       setForm({ isim:'', slug:'', renk:'#33ccff', html_kodu:'', game_url:'' });
       if (fileRef.current) fileRef.current.value='';
-      await fetch();
+      await loadOyunlar();
       setTimeout(()=>setTab('list'),1200);
     }
     setSaving(false);
@@ -74,7 +75,7 @@ export default function Admin() {
     if (!confirm(`"${isim}" silinsin mi?`)) return;
     await supabase.from('oyunlar').delete().eq('id',id);
     showMsg(`✅ "${isim}" silindi`);
-    fetch();
+    loadOyunlar();
   };
 
   const p = { minHeight:'100vh', background:'linear-gradient(160deg,#0f0c29,#302b63)', fontFamily:"'Fredoka One',cursive", color:'white' };
@@ -99,6 +100,7 @@ export default function Admin() {
       <div style={{ padding:'0 28px 40px' }}>
         {tab==='list' && (
           <div>
+            {oyunlar.length === 0 && <p style={{ color:'rgba(255,255,255,0.4)', marginTop:40, textAlign:'center' }}>Henüz oyun yok. ➕ Yeni Oyun ile ekle!</p>}
             {oyunlar.map(o => (
               <div key={o.id} style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:16, padding:'16px 20px', display:'flex', alignItems:'center', gap:16, marginBottom:10 }}>
                 <div style={{ width:14, height:40, borderRadius:4, background:o.renk||'#33ccff', flexShrink:0 }} />
