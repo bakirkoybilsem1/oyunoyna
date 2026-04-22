@@ -2,7 +2,6 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
-import { use } from 'react';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -10,7 +9,7 @@ const supabase = createClient(
 );
 
 export default function OyunPage({ params }) {
-  const { slug } = use(params);
+  const slug = params.slug;
   const [oyun, setOyun] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -37,7 +36,7 @@ export default function OyunPage({ params }) {
   const isUrl = oyun.html_kodu?.startsWith('http');
   const isIframe = oyun.html_kodu?.trim().startsWith('<iframe');
   let src = null;
-  if (isIframe) { const m = oyun.html_kodu.match(/src=["']([^"']+)["']/); if(m) src=m[1]; }
+  if (isIframe) { const m = oyun.html_kodu.match(/src=["']([^"']+)["']/); if (m) src = m[1]; }
 
   return (
     <div style={{ minHeight:'100vh', display:'flex', flexDirection:'column', background:'#0f0c29', fontFamily:"'Fredoka One',cursive" }}>
@@ -48,9 +47,12 @@ export default function OyunPage({ params }) {
       </div>
       <div style={{ flex:1, padding:12 }}>
         <div style={{ width:'100%', borderRadius:20, overflow:'hidden', boxShadow:'0 20px 60px rgba(0,0,0,0.5)', height:'calc(100vh - 80px)' }}>
-          {src ? <iframe src={src} style={{ width:'100%', height:'100%', border:'none' }} title={oyun.isim} allowFullScreen />
-          : isUrl ? <iframe src={oyun.html_kodu} style={{ width:'100%', height:'100%', border:'none' }} title={oyun.isim} allowFullScreen />
-          : <iframe srcDoc={oyun.html_kodu} style={{ width:'100%', height:'100%', border:'none' }} title={oyun.isim} sandbox="allow-scripts allow-same-origin allow-forms" />}
+          {src
+            ? <iframe src={src} style={{ width:'100%', height:'100%', border:'none' }} title={oyun.isim} allowFullScreen />
+            : isUrl
+            ? <iframe src={oyun.html_kodu} style={{ width:'100%', height:'100%', border:'none' }} title={oyun.isim} allowFullScreen />
+            : <iframe srcDoc={oyun.html_kodu} style={{ width:'100%', height:'100%', border:'none' }} title={oyun.isim} sandbox="allow-scripts allow-forms allow-popups allow-modals" />
+          }
         </div>
       </div>
     </div>
