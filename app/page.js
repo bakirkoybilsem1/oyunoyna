@@ -28,38 +28,64 @@ export default function Home() {
   return (
     <main style={{ minHeight:'100vh', background:'linear-gradient(160deg,#0f0c29,#302b63,#24243e)', fontFamily:"'Fredoka One',cursive", overflowX:'hidden' }}>
       <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet" />
+
       <header style={{ textAlign:'center', padding:'48px 16px 32px' }}>
-        <h1 style={{ fontSize:'clamp(2.5rem,8vw,5rem)', color:'#fff', textShadow:'0 4px 24px rgba(240,147,251,0.6)', margin:0 }}>
-          🪁 OyunOyna
-        </h1>
-        <p style={{ color:'rgba(255,255,255,0.6)', fontSize:'1.1rem', marginTop:8 }}>Eğlence burada başlar!</p>
+        <div style={{ display:'inline-block', animation:'titleFloat 4s ease-in-out infinite' }}>
+          <h1 style={{ fontSize:'clamp(1.2rem,3.5vw,2.4rem)', color:'#fff', textShadow:'0 4px 24px rgba(240,147,251,0.6)', margin:0, lineHeight:1.3 }}>
+            🪁 Bakırköy BİLSEM
+          </h1>
+          <h2 style={{ fontSize:'clamp(0.9rem,2.5vw,1.6rem)', color:'rgba(255,255,255,0.85)', margin:'6px 0 0', fontWeight:400, letterSpacing:'0.02em' }}>
+            Dijital Oyun Tasarlama Atölyesi
+          </h2>
+        </div>
+        <p style={{ color:'rgba(255,255,255,0.5)', fontSize:'1rem', marginTop:12 }}>Eğlence burada başlar!</p>
       </header>
-      <section style={{ maxWidth:1100, margin:'0 auto', padding:'0 24px 80px', display:'flex', flexWrap:'wrap', gap:40, justifyContent:'center' }}>
+
+      <section style={{ maxWidth:1100, margin:'0 auto', padding:'0 24px 80px', display:'flex', flexWrap:'wrap', gap:48, justifyContent:'center' }}>
         {oyunlar.length === 0 ? (
           <p style={{ color:'rgba(255,255,255,0.4)', fontSize:'1.4rem', marginTop:60 }}>Henüz oyun eklenmedi 🪁</p>
         ) : oyunlar.map((oyun, i) => {
           const [c1,c2] = COLORS[i % COLORS.length];
-          const delay = (i * 0.4) % 2.5;
+          // Her uçurtma farklı animasyon süresi ve yön
+          const duration = 2.5 + (i * 0.7) % 2;
+          const delay = (i * 0.6) % 3;
+          const animName = `kite${i % 4}`;
           return (
             <Link key={oyun.id} href={`/oyun/${oyun.slug}`} style={{ textDecoration:'none', display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
-              <div style={{ width:90, height:90, position:'relative', animation:`kiteFloat 3s ease-in-out infinite`, animationDelay:`${delay}s`, filter:'drop-shadow(0 10px 20px rgba(0,0,0,0.4))', cursor:'pointer' }}>
-                <div style={{ position:'absolute', inset:0, background:`linear-gradient(135deg,${c1},${c2})`, clipPath:'polygon(50% 0%,100% 50%,50% 100%,0% 50%)', borderRadius:6 }} />
-                <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:32 }}>{EMOJIS[i % EMOJIS.length]}</div>
+              <div style={{
+                width:100, height:100, position:'relative',
+                animation:`${animName} ${duration}s ease-in-out infinite`,
+                animationDelay:`${delay}s`,
+                filter:'drop-shadow(0 12px 24px rgba(0,0,0,0.5))',
+                cursor:'pointer'
+              }}>
+                <div style={{ position:'absolute', inset:0, background:`linear-gradient(135deg,${c1},${c2})`, clipPath:'polygon(50% 0%,100% 50%,50% 100%,0% 50%)', borderRadius:8 }} />
+                <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:36 }}>{EMOJIS[i % EMOJIS.length]}</div>
               </div>
-              <svg width="6" height="44" style={{ opacity:0.6 }}>
-                <path d="M3 0 Q9 11 3 22 Q-3 33 3 44" stroke="white" strokeWidth="1.5" fill="none" strokeDasharray="3,3" />
+              <svg width="8" height="50" style={{ opacity:0.5 }}>
+                <path d="M4 0 Q12 12 4 25 Q-4 38 4 50" stroke="white" strokeWidth="1.5" fill="none" strokeDasharray="4,3" />
               </svg>
-              <span style={{ color:'#fff', fontWeight:700, fontSize:'0.85rem', textAlign:'center', maxWidth:90, lineHeight:1.2, textShadow:'0 2px 8px rgba(0,0,0,0.5)' }}>{oyun.isim}</span>
+              <span style={{ color:'#fff', fontWeight:700, fontSize:'0.9rem', textAlign:'center', maxWidth:100, lineHeight:1.2, textShadow:'0 2px 8px rgba(0,0,0,0.5)' }}>{oyun.isim}</span>
             </Link>
           );
         })}
       </section>
+
       <style>{`
-        @keyframes kiteFloat {
-          0%,100% { transform:translateY(0px) rotate(-4deg); }
-          50% { transform:translateY(-20px) rotate(4deg); }
+        @keyframes kite0 {
+          0%   { transform: translateY(0px) translateX(0px) rotate(-5deg); }
+          25%  { transform: translateY(-22px) translateX(10px) rotate(3deg); }
+          50%  { transform: translateY(-10px) translateX(-8px) rotate(6deg); }
+          75%  { transform: translateY(-28px) translateX(5px) rotate(-3deg); }
+          100% { transform: translateY(0px) translateX(0px) rotate(-5deg); }
         }
-      `}</style>
-    </main>
-  );
-}
+        @keyframes kite1 {
+          0%   { transform: translateY(0px) translateX(0px) rotate(4deg); }
+          30%  { transform: translateY(-18px) translateX(-12px) rotate(-4deg); }
+          60%  { transform: translateY(-30px) translateX(8px) rotate(7deg); }
+          100% { transform: translateY(0px) translateX(0px) rotate(4deg); }
+        }
+        @keyframes kite2 {
+          0%   { transform: translateY(0px) translateX(0px) rotate(-3deg); }
+          20%  { transform: translateY(-25px) translateX(6px) rotate(5deg); }
+          50%  { transform:
