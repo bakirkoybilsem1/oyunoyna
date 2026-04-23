@@ -1,6 +1,3 @@
-Güzel fikir! GitHub'da `app/page.js` dosyasını **github.dev** editöründe aç (URL'de `github.com` → `github.dev` yaz), tüm içeriği sil, şunu yapıştır:
-
-```js
 'use client';
 import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
@@ -202,6 +199,3 @@ export default function Home() {
     </main>
   );
 }
-```
-
-Commit et, Vercel deploy eder. Balonlar Kapadokya gibi süzülecek, fare üstüne gelince kaçacak, tıklayınca oyun açılacak.
