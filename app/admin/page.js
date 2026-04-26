@@ -14,7 +14,7 @@ export default function AdminPanel() {
   const [sifre, setSifre] = useState('');
   const [girisYapildi, setGirisYapildi] = useState(false);
   const [sifreHata, setSifreHata] = useState('');
-  const ADMIN_SIFRE = 'bilsem2024';
+  const ADMIN_SIFRE = 'Bb12345678';
 
   const [tab, setTab] = useState('odalar'); // 'odalar' | 'oyunlar'
   const [odalar, setOdalar] = useState([]);
