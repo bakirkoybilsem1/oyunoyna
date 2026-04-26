@@ -167,7 +167,7 @@ export default function AdminPanel() {
       goster('Ad, URL ve Oda zorunlu!', false); setYukleniyor(false); return;
     }
     const slug = oyunFormu.slug || slugOlustur(oyunFormu.isim);
-    const payload = { isim:oyunFormu.isim, slug, url:oyunFormu.url, oda_id:oyunFormu.oda_id, renk:oyunFormu.renk, is_active:oyunFormu.is_active };
+    const payload = { isim:oyunFormu.isim, slug, url:oyunFormu.url, oda_id:oyunFormu.oda_id, renk:oyunFormu.renk, is_active:oyunFormu.is_active, html_kodu: oyunModu === 'html' ? htmlKod : oyunFormu.url };
     const { error } = oyunDuzenleId
       ? await supabase.from('oyunlar').update(payload).eq('id', oyunDuzenleId)
       : await supabase.from('oyunlar').insert(payload);
