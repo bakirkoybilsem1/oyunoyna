@@ -7,6 +7,10 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
+const GITHUB_OWNER = 'bakirkoybilsem1';
+const GITHUB_REPO = 'oyun-merkezi';
+const GITHUB_BRANCH = 'main';
+
 const EMOJI_LISTESI = ['🎮','🚀','⚽','🎯','🧩','🎲','🏆','🌟','🦄','🐉','🎪','🎨','🏎️','🤖','👾','🎸','🌈','🦋','🎭','🎠','🔮','🎡','🌺','🏄','🦊','🐬','🌙','⚡','🎋','🎻'];
 const RENK_LISTESI = ['#FF6B6B','#4ECDC4','#FCCB90','#96FBC4','#FBC2EB','#FDDB92','#E0C3FC','#a1ffce','#F59E0B','#10B981','#A78BFA','#F472B6','#34D399','#60A5FA','#FB923C'];
 
@@ -16,7 +20,7 @@ export default function AdminPanel() {
   const [sifreHata, setSifreHata] = useState('');
   const ADMIN_SIFRE = 'Bb12345678';
 
-  const [tab, setTab] = useState('odalar'); // 'odalar' | 'oyunlar'
+  const [tab, setTab] = useState('odalar');
   const [odalar, setOdalar] = useState([]);
   const [oyunlar, setOyunlar] = useState([]);
   const [seciliOda, setSeciliOda] = useState(null);
@@ -30,6 +34,12 @@ export default function AdminPanel() {
   const [oyunFormu, setOyunFormu] = useState({ isim:'', slug:'', url:'', oda_id:'', renk:'#4ECDC4', is_active:true });
   const [oyunDuzenleId, setOyunDuzenleId] = useState(null);
   const [oyunFormAcik, setOyunFormAcik] = useState(false);
+
+  // HTML yükleme
+  const [oyunModu, setOyunModu] = useState('url'); // 'url' | 'html'
+  const [htmlKod, setHtmlKod] = useState('');
+  const [githubYukleniyor, setGithubYukleniyor] = useState(false);
+  const [githubMesaj, setGithubMesaj] = useState('');
 
   const [mesaj, setMesaj] = useState('');
   const [yukleniyor, setYukleniyor] = useState(false);
@@ -52,7 +62,78 @@ export default function AdminPanel() {
     if (data) setOyunlar(data);
   }
 
-  function goster(m, ok=true) { setMesaj(ok ? '✓ '+m : '❌ '+m); setTimeout(()=>setMesaj(''), 3000); }
+  function goster(m, ok=true) { setMesaj(ok ? '✓ '+m : '❌ '+m); setTimeout(()=>setMesaj(''), 4000); }
+
+  function slugOlustur(isim) {
+    return isim.toLowerCase()
+      .replace(/ğ/g,'g').replace(/ü/g,'u').replace(/ş/g,'s')
+      .replace(/ı/g,'i').replace(/ö/g,'o').replace(/ç/g,'c')
+      .replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'');
+  }
+
+  // GitHub'a HTML dosyası yükle
+  async function githubYukle() {
+    if (!htmlKod.trim()) { setGithubMesaj('❌ HTML kodu boş olamaz!'); return; }
+    if (!oyunFormu.isim.trim()) { setGithubMesaj('❌ Önce oyun adını yaz!'); return; }
+
+    const slug = oyunFormu.slug || slugOlustur(oyunFormu.isim);
+    const dosyaAdi = `${slug}/index.html`;
+    const icerik = btoa(unescape(encodeURIComponent(htmlKod)));
+
+    setGithubYukleniyor(true);
+    setGithubMesaj('⏳ GitHub\'a yükleniyor...');
+
+    try {
+      const token = process.env.NEXT_PUBLIC_GITHUB_TOKEN;
+
+      // Dosya zaten var mı kontrol et (güncelleme için SHA lazım)
+      let sha = null;
+      const kontrol = await fetch(
+        `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${dosyaAdi}`,
+        { headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json' } }
+      );
+      if (kontrol.ok) {
+        const mevcut = await kontrol.json();
+        sha = mevcut.sha;
+      }
+
+      const body = {
+        message: `Oyun eklendi: ${oyunFormu.isim}`,
+        content: icerik,
+        branch: GITHUB_BRANCH,
+        ...(sha ? { sha } : {})
+      };
+
+      const res = await fetch(
+        `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${dosyaAdi}`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `token ${token}`,
+            Accept: 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        }
+      );
+
+      if (!res.ok) {
+        const hata = await res.json();
+        setGithubMesaj(`❌ GitHub hatası: ${hata.message}`);
+        setGithubYukleniyor(false);
+        return;
+      }
+
+      const oyunUrl = `https://oyun-merkezi.vercel.app/${slug}`;
+      setOyunFormu(p => ({ ...p, slug, url: oyunUrl }));
+      setGithubMesaj(`✅ Yüklendi! URL otomatik dolduruldu.`);
+      setGithubYukleniyor(false);
+
+    } catch (e) {
+      setGithubMesaj(`❌ Hata: ${e.message}`);
+      setGithubYukleniyor(false);
+    }
+  }
 
   // ODALAR
   async function odaKaydet() {
@@ -80,9 +161,6 @@ export default function AdminPanel() {
   }
 
   // OYUNLAR
-  function slugOlustur(isim) {
-    return isim.toLowerCase().replace(/ğ/g,'g').replace(/ü/g,'u').replace(/ş/g,'s').replace(/ı/g,'i').replace(/ö/g,'o').replace(/ç/g,'c').replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'');
-  }
   async function oyunKaydet() {
     setYukleniyor(true);
     if (!oyunFormu.isim.trim() || !oyunFormu.url.trim() || !oyunFormu.oda_id) {
@@ -96,7 +174,9 @@ export default function AdminPanel() {
     setYukleniyor(false);
     if (error) { goster(error.message, false); return; }
     goster(oyunDuzenleId ? 'Oyun güncellendi!' : 'Oyun eklendi!');
-    setOyunFormAcik(false); setOyunDuzenleId(null); setOyunFormu({ isim:'', slug:'', url:'', oda_id:'', renk:'#4ECDC4', is_active:true });
+    setOyunFormAcik(false); setOyunDuzenleId(null);
+    setOyunFormu({ isim:'', slug:'', url:'', oda_id:'', renk:'#4ECDC4', is_active:true });
+    setHtmlKod(''); setGithubMesaj(''); setOyunModu('url');
     fetchOyunlar();
   }
   async function oyunSil(id) {
@@ -110,7 +190,7 @@ export default function AdminPanel() {
   }
   function oyunDuzenle(oyun) {
     setOyunFormu({ isim:oyun.isim, slug:oyun.slug, url:oyun.url||'', oda_id:oyun.oda_id||'', renk:oyun.renk||'#4ECDC4', is_active:oyun.is_active });
-    setOyunDuzenleId(oyun.id); setOyunFormAcik(true);
+    setOyunDuzenleId(oyun.id); setOyunFormAcik(true); setOyunModu('url');
     window.scrollTo({ top:0, behavior:'smooth' });
   }
 
@@ -119,7 +199,6 @@ export default function AdminPanel() {
   const inp = (s) => ({ border:'1.5px solid #ddd', borderRadius:8, padding:'9px 12px', fontSize:14, fontFamily:'sans-serif', outline:'none', background:'#fff', width:'100%', boxSizing:'border-box', ...s });
   const btn = (bg, s) => ({ background:bg, color:'#fff', border:'none', padding:'9px 20px', borderRadius:8, cursor:'pointer', fontSize:13, fontWeight:700, fontFamily:'sans-serif', ...s });
 
-  // ŞİFRE EKRANI
   if (!girisYapildi) return (
     <div style={{ fontFamily:'sans-serif', background:'#f5f5f5', minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center' }}>
       <div style={{ background:'#fff', borderRadius:16, padding:'40px 36px', width:'100%', maxWidth:360, boxShadow:'0 4px 24px rgba(0,0,0,0.1)' }}>
@@ -170,7 +249,6 @@ export default function AdminPanel() {
       </div>
 
       <div style={{ padding:'16px 24px 40px' }}>
-        {/* MESAJ */}
         {mesaj && <div style={{ background:mesaj.startsWith('✓')?'#f0fdf4':'#fff1f2', border:`1px solid ${mesaj.startsWith('✓')?'#86efac':'#fca5a5'}`, borderRadius:8, padding:'10px 16px', marginBottom:16, fontSize:13, fontWeight:600, color:mesaj.startsWith('✓')?'#16a34a':'#dc2626' }}>{mesaj}</div>}
 
         {/* TABS */}
@@ -215,7 +293,6 @@ export default function AdminPanel() {
                     ))}
                   </div>
                 </div>
-                {/* Önizleme */}
                 <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
                   <div style={{ background:`radial-gradient(circle at 35% 30%, rgba(255,255,255,0.3), ${odaFormu.renk}88)`, border:`2px solid ${odaFormu.renk}`, borderRadius:16, padding:'14px 20px', display:'flex', alignItems:'center', gap:10 }}>
                     <span style={{ fontSize:32 }}>{odaFormu.emoji}</span>
@@ -260,8 +337,10 @@ export default function AdminPanel() {
               <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:14, padding:'24px', marginBottom:20 }}>
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
                   <div style={{ fontSize:18, fontWeight:700 }}>{oyunDuzenleId ? '✏️ Oyun Düzenle' : '➕ Yeni Oyun Ekle'}</div>
-                  <button onClick={()=>{setOyunFormAcik(false);setOyunDuzenleId(null);setOyunFormu({isim:'',slug:'',url:'',oda_id:'',renk:'#4ECDC4',is_active:true});}} style={{ background:'none', border:'1px solid #ddd', borderRadius:16, padding:'3px 12px', cursor:'pointer', fontSize:12 }}>✕ Kapat</button>
+                  <button onClick={()=>{setOyunFormAcik(false);setOyunDuzenleId(null);setOyunFormu({isim:'',slug:'',url:'',oda_id:'',renk:'#4ECDC4',is_active:true});setHtmlKod('');setGithubMesaj('');setOyunModu('url');}} style={{ background:'none', border:'1px solid #ddd', borderRadius:16, padding:'3px 12px', cursor:'pointer', fontSize:12 }}>✕ Kapat</button>
                 </div>
+
+                {/* Oyun adı ve slug - her zaman göster */}
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
                   <div>
                     <label style={{ fontSize:11, textTransform:'uppercase', color:'#9ca3af', fontWeight:700, display:'block', marginBottom:4 }}>Oyun Adı *</label>
@@ -272,11 +351,62 @@ export default function AdminPanel() {
                     <input value={oyunFormu.slug} onChange={e=>setOyunFormu(p=>({...p,slug:e.target.value}))} placeholder="milanin-macerasi" style={inp({ background:'#f9fafb' })}/>
                   </div>
                 </div>
-                <div style={{ marginBottom:12 }}>
-                  <label style={{ fontSize:11, textTransform:'uppercase', color:'#9ca3af', fontWeight:700, display:'block', marginBottom:4 }}>Oyun URL * (embed linki)</label>
-                  <input value={oyunFormu.url} onChange={e=>setOyunFormu(p=>({...p,url:e.target.value}))} placeholder="https://..." style={inp()}/>
+
+                {/* URL mi HTML mi seçimi */}
+                <div style={{ marginBottom:16 }}>
+                  <label style={{ fontSize:11, textTransform:'uppercase', color:'#9ca3af', fontWeight:700, display:'block', marginBottom:8 }}>Oyun Kaynağı</label>
+                  <div style={{ display:'flex', gap:0, background:'#f3f4f6', borderRadius:8, padding:3, width:'fit-content' }}>
+                    <button onClick={()=>setOyunModu('url')} style={{ background:oyunModu==='url'?'#fff':'none', color:oyunModu==='url'?'#374151':'#9ca3af', border:'none', padding:'7px 18px', borderRadius:6, cursor:'pointer', fontSize:12, fontWeight:700, fontFamily:'sans-serif', boxShadow:oyunModu==='url'?'0 1px 4px rgba(0,0,0,0.1)':'none' }}>
+                      🔗 URL Gir
+                    </button>
+                    <button onClick={()=>setOyunModu('html')} style={{ background:oyunModu==='html'?'#fff':'none', color:oyunModu==='html'?'#374151':'#9ca3af', border:'none', padding:'7px 18px', borderRadius:6, cursor:'pointer', fontSize:12, fontWeight:700, fontFamily:'sans-serif', boxShadow:oyunModu==='html'?'0 1px 4px rgba(0,0,0,0.1)':'none' }}>
+                      💻 HTML Yükle
+                    </button>
+                  </div>
                 </div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
+
+                {/* URL modu */}
+                {oyunModu === 'url' && (
+                  <div style={{ marginBottom:12 }}>
+                    <label style={{ fontSize:11, textTransform:'uppercase', color:'#9ca3af', fontWeight:700, display:'block', marginBottom:4 }}>Oyun URL * (embed linki)</label>
+                    <input value={oyunFormu.url} onChange={e=>setOyunFormu(p=>({...p,url:e.target.value}))} placeholder="https://..." style={inp()}/>
+                  </div>
+                )}
+
+                {/* HTML modu */}
+                {oyunModu === 'html' && (
+                  <div style={{ marginBottom:12 }}>
+                    <label style={{ fontSize:11, textTransform:'uppercase', color:'#9ca3af', fontWeight:700, display:'block', marginBottom:4 }}>HTML Kodu *</label>
+                    <textarea
+                      value={htmlKod}
+                      onChange={e=>setHtmlKod(e.target.value)}
+                      placeholder="<!DOCTYPE html>&#10;<html>&#10;  ...&#10;</html>"
+                      rows={10}
+                      style={inp({ fontFamily:'monospace', fontSize:12, resize:'vertical', lineHeight:1.5 })}
+                    />
+                    <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:8 }}>
+                      <button
+                        onClick={githubYukle}
+                        disabled={githubYukleniyor}
+                        style={btn('linear-gradient(135deg,#24292e,#444d56)', { opacity:githubYukleniyor?0.6:1, display:'flex', alignItems:'center', gap:6 })}
+                      >
+                        {githubYukleniyor ? '⏳ Yükleniyor...' : '⬆️ GitHub\'a Yükle'}
+                      </button>
+                      {githubMesaj && (
+                        <span style={{ fontSize:12, color: githubMesaj.startsWith('✅') ? '#16a34a' : githubMesaj.startsWith('⏳') ? '#d97706' : '#dc2626', fontWeight:600 }}>
+                          {githubMesaj}
+                        </span>
+                      )}
+                    </div>
+                    {oyunFormu.url && (
+                      <div style={{ marginTop:8, background:'#f0fdf4', border:'1px solid #86efac', borderRadius:6, padding:'8px 12px', fontSize:12, color:'#16a34a' }}>
+                        ✅ Oyun URL'si: <strong>{oyunFormu.url}</strong>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:16 }}>
                   <div>
                     <label style={{ fontSize:11, textTransform:'uppercase', color:'#9ca3af', fontWeight:700, display:'block', marginBottom:4 }}>Oda Seç *</label>
                     <select value={oyunFormu.oda_id} onChange={e=>setOyunFormu(p=>({...p,oda_id:e.target.value}))} style={inp()}>
@@ -292,6 +422,7 @@ export default function AdminPanel() {
                     </select>
                   </div>
                 </div>
+
                 <button onClick={oyunKaydet} disabled={yukleniyor} style={btn('linear-gradient(135deg,#f093fb,#f5576c)', { opacity:yukleniyor?0.6:1 })}>
                   {yukleniyor ? 'Kaydediliyor...' : oyunDuzenleId ? 'Güncelle ✓' : 'Oyun Ekle ✓'}
                 </button>
