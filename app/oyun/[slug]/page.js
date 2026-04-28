@@ -38,7 +38,7 @@ export default function OyunPage({ params }) {
   let src = null;
   if (isIframe) { const m = oyun.html_kodu.match(/src=["']([^"']+)["']/); if (m) src = m[1]; }
 
-  const kaynakUrl = isUrl ? oyun.html_kodu : src ?? null;
+  const kaynakUrl = isUrl ? oyun.html_kodu : src ?? oyun.kaynak_url ?? null;
 
   return (
     <div style={{ minHeight:'100vh', display:'flex', flexDirection:'column', background:'#0f0c29', fontFamily:"'Fredoka One',cursive" }}>
