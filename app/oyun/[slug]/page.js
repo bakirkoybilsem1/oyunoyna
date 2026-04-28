@@ -41,38 +41,4 @@ export default function OyunPage({ params }) {
   const kaynakUrl = oyun.kaynak_url ?? (isUrl ? oyun.html_kodu : src ?? null);
 
   return (
-    <div style={{ minHeight:'100vh', display:'flex', flexDirection:'column', background:'#0f0c29', fontFamily:"'Fredoka One',cursive" }}>
-      <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet" />
-
-      <div style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 20px', background:'rgba(255,255,255,0.07)', borderBottom:'1px solid rgba(255,255,255,0.1)' }}>
-        <Link href="/" style={{ color:'rgba(255,255,255,0.7)', textDecoration:'none', fontSize:'1.4rem' }}>←</Link>
-
-        {kaynakUrl ? (
-          
-            href={kaynakUrl}
-            target="_blank"
-            rel="noreferrer"
-            style={{ color:'white', fontWeight:700, fontSize:'1.2rem', textDecoration:'none', display:'flex', alignItems:'center', gap:6 }}
-            onMouseEnter={e => e.currentTarget.style.opacity='0.7'}
-            onMouseLeave={e => e.currentTarget.style.opacity='1'}
-          >
-            🎮 {oyun.isim} <span style={{ fontSize:'0.8rem', color:'rgba(255,255,255,0.4)' }}>↗</span>
-          </a>
-        ) : (
-          <span style={{ color:'white', fontWeight:700, fontSize:'1.2rem' }}>🎮 {oyun.isim}</span>
-        )}
-      </div>
-
-      <div style={{ flex:1, padding:12 }}>
-        <div style={{ width:'100%', borderRadius:20, overflow:'hidden', boxShadow:'0 20px 60px rgba(0,0,0,0.5)', height:'calc(100vh - 80px)' }}>
-          {src
-            ? <iframe src={src} style={{ width:'100%', height:'100%', border:'none' }} title={oyun.isim} allowFullScreen />
-            : isUrl
-            ? <iframe src={oyun.html_kodu} style={{ width:'100%', height:'100%', border:'none' }} title={oyun.isim} allowFullScreen />
-            : <iframe srcDoc={oyun.html_kodu} style={{ width:'100%', height:'100%', border:'none' }} title={oyun.isim} sandbox="allow-scripts allow-forms allow-popups allow-modals" />
-          }
-        </div>
-      </div>
-    </div>
-  );
-}
+    <div style={{ minHeight:'100vh', display:'flex', flexDirection:'column', background:'#0f0c29
