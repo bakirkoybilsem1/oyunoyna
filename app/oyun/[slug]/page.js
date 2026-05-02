@@ -17,26 +17,47 @@ export default function OyunPage({ params }) {
       .then(({ data }) => { setOyun(data); setLoading(false); });
   }, [params.slug]);
 
-  if (loading) return <div style={{ background:'#0f0c29', height:'100vh', color:'white', display:'flex', alignItems:'center', justifyContent:'center' }}>Yükleniyor...</div>;
-  if (!oyun) return <div style={{ color:'white', textAlign:'center', marginTop:50 }}>Oyun bulunamadı.</div>;
+  if (loading) return (
+    <div style={{ background: '#0f0c29', height: '100vh', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      Yükleniyor...
+    </div>
+  );
 
-  const isUrl = oyun.html_kodu?.startsWith('http');
-  const kaynakUrl = isUrl ? oyun.html_kodu : null;
+  if (!oyun) return (
+    <div style={{ color: 'white', textAlign: 'center', marginTop: 50 }}>
+      Oyun bulunamadı.
+    </div>
+  );
+
+  // url kolonu varsa onu kullan, yoksa html_kodu'na bak
+  const gameUrl = oyun.url || (oyun.html_kodu?.startsWith('http') ? oyun.html_kodu : null);
+  const htmlKodu = !gameUrl ? oyun.html_kodu : null;
+
+  const HEADER_H = 56;
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#0f0c29', fontFamily: "sans-serif" }}>
-      <header style={{ padding: '15px', display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.3)' }}>
-        <Link href="/" style={{ color: 'white', textDecoration: 'none' }}>← Geri Dön</Link>
-        <h1 style={{ color: 'white', flex: 1, textAlign: 'center', fontSize: '1.2rem', margin: 0 }}>{oyun.isim}</h1>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#0f0c29', fontFamily: 'sans-serif', overflow: 'hidden' }}>
+      <header style={{ height: HEADER_H, minHeight: HEADER_H, padding: '0 20px', display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.4)', flexShrink: 0 }}>
+        <Link href="/" style={{ color: 'white', textDecoration: 'none', fontSize: 14 }}>← Geri Dön</Link>
+        <h1 style={{ color: 'white', flex: 1, textAlign: 'center', fontSize: '1.1rem', margin: 0 }}>{oyun.isim}</h1>
+        <div style={{ width: 60 }} />
       </header>
 
-      <div style={{ flex: 1, position: 'relative' }}>
-        {oyun.html_kodu ? (
-          isUrl ? (
-            <iframe src={oyun.html_kodu} style={{ width: '100%', height: '100%', border: 'none' }} allowFullScreen />
-          ) : (
-            <iframe srcDoc={oyun.html_kodu} style={{ width: '100%', height: '100%', border: 'none', background:'white' }} allowFullScreen />
-          )
+      <div style={{ flex: 1, height: `calc(100vh - ${HEADER_H}px)`, overflow: 'hidden' }}>
+        {gameUrl ? (
+          <iframe
+            src={gameUrl}
+            style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+            allowFullScreen
+            allow="autoplay; fullscreen"
+          />
+        ) : htmlKodu ? (
+          <iframe
+            srcDoc={htmlKodu}
+            style={{ width: '100%', height: '100%', border: 'none', display: 'block', background: 'white' }}
+            allowFullScreen
+            allow="autoplay; fullscreen"
+          />
         ) : (
           <p style={{ color: 'white', textAlign: 'center', marginTop: 20 }}>Oyun yüklenemedi.</p>
         )}
