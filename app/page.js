@@ -71,7 +71,7 @@ export default function Home() {
   // Form state
   const [formAcik, setFormAcik] = useState(false);
   const [formOyunlar, setFormOyunlar] = useState([]);
-  const [seciliOyun, setSeciliOyun] = useState('');
+  const [seciliOyunlar, setSeciliOyunlar] = useState([]);
   const [adSoyad, setAdSoyad] = useState('');
   const [istenenOyunlar, setIstenenOyunlar] = useState('');
   const [gorusler, setGorusler] = useState('');
@@ -125,7 +125,6 @@ export default function Home() {
       if (data) setTumOyunlar(data);
     });
 
-    // Form için tüm oyun isimlerini çek
     supabase.from('oyunlar').select('id, isim').eq('is_active', true).order('isim').then(({ data }) => {
       if (data) setFormOyunlar(data);
     });
@@ -146,12 +145,23 @@ export default function Home() {
     router.push(`/oyun/${secilen.slug}`);
   }
 
+  function oyunSec(isim) {
+    setSeciliOyunlar(prev => {
+      const idx = prev.indexOf(isim);
+      if (idx !== -1) return prev.filter(o => o !== isim);
+      if (prev.length >= 3) return prev;
+      return [...prev, isim];
+    });
+  }
+
   async function formuGonder() {
     if (!adSoyad.trim()) return;
     setGonderiyor(true);
     const { error } = await supabase.from('fikirler').insert({
       ad_soyad: adSoyad.trim(),
-      sevilen_oyun: seciliOyun || null,
+      sevilen_oyun: seciliOyunlar.length > 0
+        ? seciliOyunlar.map((o, i) => `${i + 1}. ${o}`).join(', ')
+        : null,
       istenen_oyunlar: istenenOyunlar.trim() || null,
       gorusler: gorusler.trim() || null,
     });
@@ -162,7 +172,7 @@ export default function Home() {
         setGonderildi(false);
         setFormAcik(false);
         setAdSoyad('');
-        setSeciliOyun('');
+        setSeciliOyunlar([]);
         setIstenenOyunlar('');
         setGorusler('');
       }, 2500);
@@ -192,12 +202,25 @@ export default function Home() {
         @keyframes gelisiguzel-bounce { 0%,100%{transform:translateX(-50%) translateY(0) rotate(-4deg)} 50%{transform:translateX(-50%) translateY(-3px) rotate(4deg)} }
         @keyframes modal-in { from{opacity:0;transform:translateY(40px) scale(0.95)} to{opacity:1;transform:translateY(0) scale(1)} }
         @keyframes fikir-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(180,255,80,0.5)} 50%{box-shadow:0 0 0 10px rgba(180,255,80,0)} }
-        .oyun-chip { transition: all 0.18s; border-radius: 20px; padding: 6px 14px; font-size: 0.78rem; cursor: pointer; border: 1.5px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.5); font-family: 'Fredoka One', cursive; }
-        .oyun-chip:hover { border-color: rgba(180,255,80,0.6); color: rgba(255,255,255,0.85); }
+        .oyun-chip {
+          transition: all 0.18s; border-radius: 20px; padding: 5px 12px; font-size: 0.75rem;
+          cursor: pointer; border: 1.5px solid rgba(255,255,255,0.2);
+          background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.5);
+          font-family: 'Fredoka One', cursive; position: relative;
+        }
+        .oyun-chip:hover:not(.disabled) { border-color: rgba(180,255,80,0.6); color: rgba(255,255,255,0.85); }
         .oyun-chip.secili { background: linear-gradient(135deg,#aaff44,#44dd88); border-color: #aaff44; color: #1a3a00; font-weight: 700; box-shadow: 0 0 12px rgba(150,255,80,0.5); }
+        .oyun-chip.disabled { opacity: 0.3; cursor: not-allowed; }
         .fikir-input { width: 100%; background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.2); border-radius: 12px; padding: 10px 14px; color: #fff; font-family: 'Fredoka One', cursive; font-size: 0.95rem; outline: none; box-sizing: border-box; transition: border-color 0.2s; }
         .fikir-input:focus { border-color: rgba(180,255,80,0.6); }
         .fikir-input::placeholder { color: rgba(255,255,255,0.3); }
+        .sira-badge {
+          position: absolute; top: -7px; right: -7px;
+          width: 18px; height: 18px; border-radius: 50%;
+          background: #1a3a00; border: 1.5px solid #aaff44;
+          font-size: 0.6rem; font-weight: 900; color: #aaff44;
+          display: flex; align-items: center; justify-content: center; line-height: 1;
+        }
       `}</style>
 
       {/* Yıldızlar */}
@@ -391,9 +414,9 @@ export default function Home() {
           style={{
             background: 'linear-gradient(135deg, #ffe600, #44dd44)',
             border: 'none', borderRadius: 30,
-            padding: '12px 32px',
+            padding: '9px 24px',
             fontFamily: "'Fredoka One', cursive",
-            fontSize: '1.1rem', fontWeight: 700,
+            fontSize: '0.88rem', fontWeight: 700,
             color: '#1a3a00', cursor: 'pointer',
             boxShadow: '0 0 20px rgba(180,255,80,0.5), 0 4px 20px rgba(0,0,0,0.3)',
             animation: 'fikir-pulse 2.5s ease-in-out infinite',
@@ -461,19 +484,28 @@ export default function Home() {
 
                 {/* En çok sevilen oyun */}
                 <div style={{ marginBottom: 18 }}>
-                  <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', display: 'block', marginBottom: 10 }}>
-                    2. En çok sevdiğiniz oyun
+                  <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', display: 'block', marginBottom: 6 }}>
+                    2. oyunoyna.vercel.app'teki en çok sevdiğiniz oyun
+                    <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.72rem', marginLeft: 6 }}>
+                      (en fazla 3 tane, tıklama sırasıyla sıralanır)
+                    </span>
                   </label>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {formOyunlar.map(oyun => (
-                      <button
-                        key={oyun.id}
-                        className={`oyun-chip${seciliOyun === oyun.isim ? ' secili' : ''}`}
-                        onClick={() => setSeciliOyun(seciliOyun === oyun.isim ? '' : oyun.isim)}
-                      >
-                        {oyun.isim}
-                      </button>
-                    ))}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                    {formOyunlar.map(oyun => {
+                      const sira = seciliOyunlar.indexOf(oyun.isim);
+                      const secili = sira !== -1;
+                      const dolu = seciliOyunlar.length >= 3 && !secili;
+                      return (
+                        <button
+                          key={oyun.id}
+                          className={`oyun-chip${secili ? ' secili' : ''}${dolu ? ' disabled' : ''}`}
+                          onClick={() => !dolu && oyunSec(oyun.isim)}
+                        >
+                          {secili && <span className="sira-badge">{sira + 1}</span>}
+                          {oyun.isim}
+                        </button>
+                      );
+                    })}
                     {formOyunlar.length === 0 && (
                       <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.8rem' }}>Oyunlar yükleniyor...</span>
                     )}
