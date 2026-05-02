@@ -51,6 +51,7 @@ function getSkyColors(t) {
 export default function Home() {
   const [odalar, setOdalar] = useState([]);
   const [oyunSayilari, setOyunSayilari] = useState({});
+  const [ziyaretSayisi, setZiyaretSayisi] = useState(null);
   const t = useSunCycle();
   const { sky1, sky2, sun, horizon } = getSkyColors(t);
   const sunY = Math.sin(t * Math.PI) * 75;
@@ -59,12 +60,20 @@ export default function Home() {
   const starOpacity = t < 0.15 ? (0.15-t)/0.15 : t > 0.85 ? (t-0.85)/0.15 : 0;
   const stars = useRef(Array.from({length:60}, ()=>({ x:Math.random()*100, y:Math.random()*60, s:Math.random()*2+0.5 }))).current;
 
+  // Ziyaret sayacını artır
   useEffect(() => {
-    // Odaları çek
+    supabase.rpc('ziyareti_artir').then(({ data, error }) => {
+      if (!error && data !== null) {
+        setZiyaretSayisi(data);
+      }
+    });
+  }, []);
+
+  // Odaları ve oyun sayılarını çek
+  useEffect(() => {
     supabase.from('odalar').select('*').eq('is_active', true).order('sira').then(({ data }) => {
       if (data) {
         setOdalar(data);
-        // Her oda için oyun sayısını çek
         data.forEach(oda => {
           supabase.from('oyunlar').select('id', { count: 'exact' }).eq('oda_id', oda.id).eq('is_active', true).then(({ count }) => {
             setOyunSayilari(prev => ({ ...prev, [oda.id]: count || 0 }));
@@ -77,6 +86,82 @@ export default function Home() {
   return (
     <main style={{ minHeight:'100vh', overflow:'hidden', position:'relative', fontFamily:"'Fredoka One',cursive", background:`linear-gradient(180deg, ${sky1} 0%, ${sky2} 60%, ${horizon} 100%)` }}>
       <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet"/>
+
+      {/* Pulse animasyonu */}
+      <style>{`
+        @keyframes pulse-dot {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.35; transform: scale(0.6); }
+        }
+        @keyframes counter-in {
+          from { opacity: 0; transform: translateY(6px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+
+      {/* ── ZİYARET SAYACI ── */}
+      <div style={{
+        position: 'fixed',
+        left: 14,
+        top: '50%',
+        transform: 'translateY(-50%)',
+        zIndex: 50,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 5,
+        background: 'rgba(0,0,0,0.50)',
+        border: '1px solid rgba(255,255,255,0.13)',
+        borderRadius: 22,
+        padding: '14px 8px 12px',
+        backdropFilter: 'blur(14px)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08)',
+        minWidth: 58,
+      }}>
+        {/* Göz ikonu */}
+        <div style={{ fontSize: 20, lineHeight: 1, filter: 'drop-shadow(0 0 6px rgba(255,200,80,0.6))' }}>👁️</div>
+
+        {/* Sayı */}
+        <div style={{
+          color: '#fff',
+          fontSize: '1.35rem',
+          fontWeight: 700,
+          lineHeight: 1,
+          textAlign: 'center',
+          textShadow: '0 0 14px rgba(255,210,80,0.9)',
+          letterSpacing: '-0.5px',
+          animation: ziyaretSayisi !== null ? 'counter-in 0.5s ease' : 'none',
+          minWidth: 42,
+        }}>
+          {ziyaretSayisi === null
+            ? <span style={{ opacity: 0.4, fontSize: '1rem' }}>…</span>
+            : ziyaretSayisi.toLocaleString('tr-TR')
+          }
+        </div>
+
+        {/* Etiket */}
+        <div style={{
+          color: 'rgba(255,255,255,0.45)',
+          fontSize: '0.55rem',
+          textAlign: 'center',
+          lineHeight: 1.4,
+          textTransform: 'uppercase',
+          letterSpacing: '0.08em',
+        }}>
+          ziyaret
+        </div>
+
+        {/* Canlı göstergesi — yeşil pulse nokta */}
+        <div style={{
+          width: 7,
+          height: 7,
+          borderRadius: '50%',
+          background: '#4ade80',
+          boxShadow: '0 0 7px #4ade80, 0 0 14px #4ade8066',
+          marginTop: 2,
+          animation: 'pulse-dot 2.2s ease-in-out infinite',
+        }}/>
+      </div>
 
       {/* Yıldızlar */}
       <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', pointerEvents:'none' }} preserveAspectRatio="none">
@@ -112,7 +197,6 @@ export default function Home() {
         )}
         {odalar.map((oda, i) => {
           const count = oyunSayilari[oda.id] || 0;
-          // Kartın hafifçe sallanması için sabit offset
           const rotate = (i % 2 === 0 ? 1 : -1) * (1 + (i % 3));
           return (
             <Link key={oda.id} href={`/oda/${oda.id}`} style={{ textDecoration:'none' }}>
