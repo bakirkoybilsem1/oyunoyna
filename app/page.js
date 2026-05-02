@@ -48,7 +48,6 @@ function getSkyColors(t) {
   return { sky1: lerp(a.sky1,b.sky1), sky2: lerp(a.sky2,b.sky2), sun: lerp(a.sun,b.sun), horizon: lerp(a.horizon,b.horizon) };
 }
 
-// Sıra: sarı, yeşil, mavi, turuncu, kırmızı
 const CARD_STYLES = ['neon-yellow','holo-green','crystal-blue','fusion-orange','crystal-red'];
 
 export default function Home() {
@@ -103,7 +102,6 @@ export default function Home() {
       <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Syne:wght@800&family=Space+Grotesk:wght@500&display=swap" rel="stylesheet"/>
 
       <style>{`
-        /* ── Kart temel ── */
         .oda-card {
           width: 160px; min-height: 180px; border-radius: 24px;
           display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -116,14 +114,12 @@ export default function Home() {
         .card-name  { color:#fff; font-weight:700; font-size:1.1rem; text-align:center; line-height:1.3; position:relative; z-index:1; }
         .card-badge { margin-top:10px; border-radius:20px; padding:3px 12px; font-size:0.75rem; color:rgba(255,255,255,0.85); position:relative; z-index:1; }
 
-        /* ── Animasyonlar ── */
         @keyframes holo-spin     { to { transform: rotate(360deg); } }
         @keyframes crystal-pulse { 0%,100%{opacity:.3;transform:scale(1)} 50%{opacity:.7;transform:scale(1.3)} }
         @keyframes sweep         { 0%{left:-100%} 100%{left:150%} }
         @keyframes live-ping     { 0%,100%{box-shadow:0 0 0 0 rgba(134,239,172,0.8)} 50%{box-shadow:0 0 0 6px rgba(134,239,172,0)} }
         @keyframes num-pop       { from{opacity:0;transform:scale(0.5)} to{opacity:1;transform:scale(1)} }
 
-        /* ══ SARI — Neon ══ */
         .card-neon-yellow {
           background: rgba(0,0,0,0.55);
           border: 2px solid #ffe600;
@@ -140,7 +136,6 @@ export default function Home() {
         .card-neon-yellow .card-badge { background:rgba(255,230,0,0.12); border:1px solid #ffe600; color:#ffe600; }
         .card-neon-yellow .card-name  { text-shadow:0 0 16px rgba(255,230,0,0.8),0 2px 8px rgba(0,0,0,0.8); }
 
-        /* ══ YEŞİL — Hologram ══ */
         .card-holo-green {
           background: linear-gradient(135deg,rgba(0,255,100,0.1),rgba(0,200,80,0.05),rgba(0,255,150,0.08));
           border: 1px solid rgba(0,255,100,0.4);
@@ -158,7 +153,6 @@ export default function Home() {
         .card-holo-green .card-badge { background:rgba(0,255,100,0.12); border:1px solid rgba(0,255,100,0.4); color:#00ff64; }
         .card-holo-green .card-name  { text-shadow:0 0 20px rgba(0,255,100,0.8),0 2px 8px rgba(0,0,0,0.8); }
 
-        /* ══ MAVİ — Kristal ══ */
         .card-crystal-blue {
           background: linear-gradient(145deg,rgba(0,150,255,0.2) 0%,rgba(0,80,200,0.06) 40%,rgba(0,200,255,0.14) 100%);
           border: 1px solid rgba(0,180,255,0.5);
@@ -177,7 +171,6 @@ export default function Home() {
         .card-crystal-blue .card-badge { background:rgba(0,150,255,0.18); border:1px solid rgba(0,180,255,0.4); color:rgba(100,210,255,0.95); }
         .card-crystal-blue .card-name  { text-shadow:0 0 24px rgba(0,180,255,0.8),0 2px 8px rgba(0,0,0,0.8); }
 
-        /* ══ TURUNCU — Fusion ══ */
         .card-fusion-orange {
           background: linear-gradient(135deg,rgba(255,100,0,0.14),rgba(255,60,0,0.08));
           border: 2px solid #ff6600;
@@ -195,7 +188,6 @@ export default function Home() {
         .card-fusion-orange .card-badge { background:rgba(255,100,0,0.2); border:1px solid #ff6600; color:#ffaa44; }
         .card-fusion-orange .card-name  { text-shadow:0 0 20px rgba(255,100,0,0.9),0 2px 8px rgba(0,0,0,0.8); }
 
-        /* ══ KIRMIZI — Kristal-Neon ══ */
         .card-crystal-red {
           background: linear-gradient(160deg,rgba(255,0,60,0.15),rgba(200,0,40,0.06));
           border: 2px solid #ff2244;
@@ -214,7 +206,7 @@ export default function Home() {
         .card-crystal-red .card-name  { text-shadow:0 0 20px rgba(255,30,70,0.9),0 2px 8px rgba(0,0,0,0.8); }
       `}</style>
 
-      {/* ── ZİYARET SAYACI ── */}
+      {/* ZİYARET SAYACI */}
       <div style={{
         position:'fixed', left:16, top:'50%', transform:'translateY(-50%)',
         zIndex:50, display:'flex', flexDirection:'column', alignItems:'center', gap:6,
@@ -223,7 +215,9 @@ export default function Home() {
           width:72, height:72, borderRadius:'50%', overflow:'hidden',
           border:'2px solid rgba(255,255,255,0.35)', background:'#0a0a0a', flexShrink:0,
         }}>
-          <video autoPlay loop muted playsInline src="/suppilami.mp4"
+          <video
+            autoPlay loop muted playsInline
+            src="https://ppbmdnnnlleoptdinzsn.supabase.co/storage/v1/object/public/suppilami.mp4/suppilami.mp4"
             style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center top' }}
           />
         </div>
