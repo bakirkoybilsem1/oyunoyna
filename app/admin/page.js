@@ -35,13 +35,28 @@ export default function Admin() {
   const [filter, setFilter]   = useState('');
   const fileRef = useRef();
 
+  // Fikirler state
+  const [fikirler, setFikirler]         = useState([]);
+  const [fikirFilter, setFikirFilter]   = useState('');
+  const [fikirYukleniyor, setFikirYukleniyor] = useState(false);
+  const [acikFikir, setAcikFikir]       = useState(null);
+
   const toast = (text, ok=true) => { setMsg({text,ok}); setTimeout(()=>setMsg({text:'',ok:true}),4000); };
 
   const fetchOyunlar = async () => {
     const { data } = await supabase.from('oyunlar').select('*').order('created_at',{ascending:false});
     setOyunlar(data||[]);
   };
+
+  const fetchFikirler = async () => {
+    setFikirYukleniyor(true);
+    const { data } = await supabase.from('fikirler').select('*').order('created_at',{ascending:false});
+    setFikirler(data||[]);
+    setFikirYukleniyor(false);
+  };
+
   useEffect(()=>{ fetchOyunlar(); },[]);
+  useEffect(()=>{ if(tab==='fikirler') fetchFikirler(); },[tab]);
 
   const handleFile = async (e) => {
     const file = e.target.files[0];
@@ -51,7 +66,6 @@ export default function Admin() {
     toast(`✅ ${file.name} yüklendi`);
   };
 
-  /* ── GitHub upload (API route üzerinden) ── */
   const uploadToGitHub = async () => {
     if (!form.isim.trim()) { toast('❌ Önce oyun adını gir',false); return; }
     if (!form.htmlKodu.trim()) { toast('❌ HTML kodu boş',false); return; }
@@ -73,7 +87,6 @@ export default function Admin() {
     setUploading(false);
   };
 
-  /* ── Supabase kaydet ── */
   const handleSave = async () => {
     if (!form.isim.trim()) { toast('❌ Oyun adı zorunlu!',false); return; }
     const slug = slugify(form.isim);
@@ -118,17 +131,28 @@ export default function Admin() {
     fetchOyunlar();
   };
 
+  const handleFikirSil = async (id) => {
+    if (!confirm('Bu fikir silinsin mi?')) return;
+    await supabase.from('fikirler').delete().eq('id',id);
+    fetchFikirler();
+  };
+
   const filtered = oyunlar.filter(o=>o.isim?.toLowerCase().includes(filter.toLowerCase()));
+  const filteredFikirler = fikirler.filter(f=>
+    f.ad_soyad?.toLowerCase().includes(fikirFilter.toLowerCase()) ||
+    f.sevilen_oyun?.toLowerCase().includes(fikirFilter.toLowerCase()) ||
+    f.istenen_oyunlar?.toLowerCase().includes(fikirFilter.toLowerCase()) ||
+    f.gorusler?.toLowerCase().includes(fikirFilter.toLowerCase())
+  );
   const odaAdi = (id) => ODALAR.find(o=>o.id===id)?.isim||'—';
   const odaIkon = (id) => ODALAR.find(o=>o.id===id)?.ikon||'';
 
-  /* ── styles ── */
   const s = {
     page:    { minHeight:'100vh', background:'#0a0a14', color:'#e8e8f0', fontFamily:"'Segoe UI',sans-serif", padding:24 },
     header:  { display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:28 },
     title:   { fontSize:22, fontWeight:700, color:'#fff', margin:0 },
     back:    { color:'#888', textDecoration:'none', fontSize:14 },
-    tabs:    { display:'flex', gap:8, marginBottom:24 },
+    tabs:    { display:'flex', gap:8, marginBottom:24, flexWrap:'wrap' },
     tab:     (a)=>({ padding:'9px 22px', borderRadius:20, border:'none', cursor:'pointer', fontWeight:600, fontSize:14, background:a?'#f5576c':'#1e1e2e', color:a?'#fff':'#aaa' }),
     toast:   (ok)=>({ padding:'10px 16px', borderRadius:10, marginBottom:16, background:ok?'#0d2e1f':'#2e0d0d', border:`1px solid ${ok?'#1a5c35':'#5c1a1a'}`, color:ok?'#4cde8a':'#de4c4c', fontSize:14 }),
     card:    { background:'#13131f', border:'1px solid #222', borderRadius:12, padding:'14px 18px', marginBottom:8, display:'flex', alignItems:'center', gap:12 },
@@ -161,6 +185,18 @@ export default function Admin() {
       <div style={s.tabs}>
         <button style={s.tab(tab==='list')} onClick={()=>{ setTab('list'); setEditId(null); setForm(EMPTY); }}>📋 Oyun Listesi</button>
         <button style={s.tab(tab==='add')}  onClick={()=>{ setTab('add');  setEditId(null); setForm(EMPTY); }}>➕ Oyun Ekle</button>
+        <button style={{...s.tab(tab==='fikirler'), background: tab==='fikirler'?'#7c3aed':'#1e1e2e', position:'relative'}}
+          onClick={()=>setTab('fikirler')}>
+          💡 Fikirler
+          {fikirler.length > 0 && tab !== 'fikirler' && (
+            <span style={{
+              position:'absolute', top:-6, right:-6,
+              background:'#f5576c', color:'#fff', borderRadius:'50%',
+              width:18, height:18, fontSize:10, fontWeight:700,
+              display:'flex', alignItems:'center', justifyContent:'center',
+            }}>{fikirler.length > 99 ? '99+' : fikirler.length}</span>
+          )}
+        </button>
       </div>
 
       {msg.text && <div style={s.toast(msg.ok)}>{msg.text}</div>}
@@ -245,7 +281,6 @@ export default function Admin() {
             </>
           )}
 
-          {/* GitHub'a Yükle — sadece dosya/yapıştır modunda */}
           {(form.inputType==='file'||form.inputType==='paste') && (
             <>
               <div style={s.ghRow}>
@@ -270,6 +305,91 @@ export default function Admin() {
             <button style={{...s.btn('#333'),marginTop:8}}
               onClick={()=>{ setEditId(null); setForm(EMPTY); setTab('list'); }}>İptal</button>
           )}
+        </div>
+      )}
+
+      {/* ── FİKİRLER ── */}
+      {tab==='fikirler' && (
+        <div>
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16}}>
+            <div style={{fontSize:13, color:'#555'}}>{filteredFikirler.length} fikir</div>
+            <button onClick={fetchFikirler} style={{background:'none', border:'1px solid #2a2a3e', borderRadius:8, color:'#888', fontSize:12, padding:'6px 14px', cursor:'pointer'}}>
+              🔄 Yenile
+            </button>
+          </div>
+
+          <input style={s.search} placeholder="🔍 İsim, oyun veya görüş ara..." value={fikirFilter} onChange={e=>setFikirFilter(e.target.value)} />
+
+          {fikirYukleniyor && <div style={{color:'#555', fontSize:14, textAlign:'center', padding:40}}>Yükleniyor...</div>}
+
+          {!fikirYukleniyor && filteredFikirler.length === 0 && (
+            <div style={{color:'#555', fontSize:14, textAlign:'center', padding:40}}>Henüz fikir yok 💭</div>
+          )}
+
+          {filteredFikirler.map(f=>(
+            <div key={f.id} style={{
+              background:'#13131f', border:'1px solid #222', borderRadius:14,
+              padding:'16px 18px', marginBottom:10, cursor:'pointer',
+              borderLeft: acikFikir===f.id ? '3px solid #7c3aed' : '3px solid transparent',
+              transition:'border-color 0.2s',
+            }}
+              onClick={()=>setAcikFikir(acikFikir===f.id ? null : f.id)}
+            >
+              {/* Özet satır */}
+              <div style={{display:'flex', alignItems:'center', gap:10}}>
+                <div style={{
+                  width:36, height:36, borderRadius:'50%', flexShrink:0,
+                  background:'linear-gradient(135deg,#7c3aed,#a855f7)',
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  fontSize:15, fontWeight:700, color:'#fff',
+                }}>
+                  {f.ad_soyad?.[0]?.toUpperCase()||'?'}
+                </div>
+                <div style={{flex:1, minWidth:0}}>
+                  <div style={{fontWeight:700, fontSize:14, color:'#e8e8f0'}}>{f.ad_soyad || '—'}</div>
+                  <div style={{fontSize:12, color:'#555', marginTop:2}}>
+                    {f.created_at ? new Date(f.created_at).toLocaleString('tr-TR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : ''}
+                  </div>
+                </div>
+                {f.sevilen_oyun && (
+                  <span style={{fontSize:11, padding:'3px 10px', borderRadius:10, background:'#1a1a2e', color:'#a78bfa', fontWeight:600, whiteSpace:'nowrap', maxWidth:140, overflow:'hidden', textOverflow:'ellipsis'}}>
+                    🎮 {f.sevilen_oyun}
+                  </span>
+                )}
+                <span style={{fontSize:18, color:'#444', marginLeft:4}}>{acikFikir===f.id?'▲':'▼'}</span>
+              </div>
+
+              {/* Detay */}
+              {acikFikir===f.id && (
+                <div style={{marginTop:14, borderTop:'1px solid #1e1e2e', paddingTop:14, display:'flex', flexDirection:'column', gap:10}}>
+                  {f.sevilen_oyun && (
+                    <div>
+                      <div style={{fontSize:11, color:'#666', fontWeight:600, marginBottom:4, textTransform:'uppercase', letterSpacing:'.05em'}}>En Sevilen Oyun(lar)</div>
+                      <div style={{fontSize:13, color:'#c4b5fd', background:'#1a1a2e', borderRadius:8, padding:'8px 12px'}}>{f.sevilen_oyun}</div>
+                    </div>
+                  )}
+                  {f.istenen_oyunlar && (
+                    <div>
+                      <div style={{fontSize:11, color:'#666', fontWeight:600, marginBottom:4, textTransform:'uppercase', letterSpacing:'.05em'}}>İstenen Oyunlar</div>
+                      <div style={{fontSize:13, color:'#e8e8f0', background:'#0d1b0d', borderRadius:8, padding:'8px 12px', whiteSpace:'pre-wrap'}}>{f.istenen_oyunlar}</div>
+                    </div>
+                  )}
+                  {f.gorusler && (
+                    <div>
+                      <div style={{fontSize:11, color:'#666', fontWeight:600, marginBottom:4, textTransform:'uppercase', letterSpacing:'.05em'}}>Görüş ve Öneriler</div>
+                      <div style={{fontSize:13, color:'#e8e8f0', background:'#0d1520', borderRadius:8, padding:'8px 12px', whiteSpace:'pre-wrap'}}>{f.gorusler}</div>
+                    </div>
+                  )}
+                  <div style={{display:'flex', justifyContent:'flex-end', marginTop:4}}>
+                    <button onClick={(e)=>{ e.stopPropagation(); handleFikirSil(f.id); }}
+                      style={{background:'#2e0d0d', border:'1px solid #5c1a1a', color:'#de4c4c', borderRadius:8, padding:'6px 14px', fontSize:12, cursor:'pointer', fontWeight:600}}>
+                      🗑️ Sil
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>
