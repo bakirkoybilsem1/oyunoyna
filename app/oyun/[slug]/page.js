@@ -1,44 +1,41 @@
-'use client';
-import { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
-import Link from 'next/link';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
-
-export default function OyunPage({ params }) {
-  const slug = params.slug;
-  const [oyun, setOyun] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    supabase.from('oyunlar').select('*').eq('slug', slug).single()
-      .then(({ data }) => { setOyun(data); setLoading(false); });
-  }, [slug]);
-
-  if (loading) return (
-    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#0f0c29', color:'white', fontSize:'2rem', fontFamily:"'Fredoka One',cursive" }}>
+return (
+    <div style={{ 
+      minHeight: '100vh', 
+      display: 'flex', 
+      flexDirection: 'column', 
+      background: '#0f0c29', // Tırnak kapatıldı
+      fontFamily: "'Fredoka One', cursive" 
+    }}>
       <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet" />
-      🎮 Yükleniyor...
+      
+      {/* Üst Bar */}
+      <header style={{ padding: '15px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.05)' }}>
+        <Link href="/" style={{ color: 'white', textDecoration: 'none', fontSize: '1.1rem', fontWeight: 700 }}>
+          ← Geri Dön
+        </Link>
+        <h1 style={{ color: 'white', margin: 0, fontSize: '1.2rem' }}>{oyun.isim}</h1>
+        <div style={{ width: 80 }}></div> {/* Dengeleyici */}
+      </header>
+
+      {/* Oyun Alanı */}
+      <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        {kaynakUrl ? (
+          <iframe
+            src={kaynakUrl}
+            style={{ 
+              width: '100%', 
+              height: '100%', 
+              border: 'none',
+              background: 'white'
+            }}
+            allowFullScreen
+          />
+        ) : (
+          <div style={{ color: 'white', textAlign: 'center' }}>
+            <p>Oyun içeriği yüklenemedi (Geçersiz URL).</p>
+          </div>
+        )}
+      </div>
     </div>
   );
-
-  if (!oyun) return (
-    <div style={{ minHeight:'100vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:16, background:'#0f0c29', fontFamily:"'Fredoka One',cursive" }}>
-      <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet" />
-      <p style={{ color:'white', fontSize:'1.5rem' }}>Oyun bulunamadı 😢</p>
-      <Link href="/" style={{ background:'linear-gradient(135deg,#f093fb,#f5576c)', color:'white', padding:'12px 28px', borderRadius:50, textDecoration:'none', fontWeight:700 }}>← Ana Sayfa</Link>
-    </div>
-  );
-
-  const isUrl = oyun.html_kodu?.startsWith('http');
-  const isIframe = oyun.html_kodu?.trim().startsWith('<iframe');
-  let src = null;
-  if (isIframe) { const m = oyun.html_kodu.match(/src=["']([^"']+)["']/); if (m) src = m[1]; }
-
-  const kaynakUrl = oyun.kaynak_url ?? (isUrl ? oyun.html_kodu : src ?? null);
-
-  return (
-    <div style={{ minHeight:'100vh', display:'flex', flexDirection:'column', background:'#0f0c29
+}
