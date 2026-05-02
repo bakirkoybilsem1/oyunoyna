@@ -111,8 +111,7 @@ export default function Home() {
       }
     });
 
-    // Tüm aktif oyunları çek (rastgele seçim için)
-    supabase.from('oyunlar').select('id, oda_id').eq('is_active', true).then(({ data }) => {
+    supabase.from('oyunlar').select('id, slug').eq('is_active', true).then(({ data }) => {
       if (data) setTumOyunlar(data);
     });
   }, []);
@@ -127,13 +126,12 @@ export default function Home() {
     if (tumOyunlar.length === 1) {
       secilen = tumOyunlar[0];
     } else {
-      // Son açılan oyunu tekrar açmamak için filtrele
       const diger = tumOyunlar.filter(o => o.id !== lastOyunRef.current);
       secilen = diger[Math.floor(Math.random() * diger.length)];
     }
 
     lastOyunRef.current = secilen.id;
-    router.push(`/oda/${secilen.oda_id}/oyun/${secilen.id}`);
+    router.push(`/oyun/${secilen.slug}`);
   }
 
   return (
@@ -156,7 +154,7 @@ export default function Home() {
         @keyframes num-pop { from{opacity:0;transform:scale(0.5)} to{opacity:1;transform:scale(1)} }
         @keyframes sun-pulse { 0%,100%{box-shadow:0 0 40px rgba(255,200,0,0.7),0 0 80px rgba(255,150,0,0.35)} 50%{box-shadow:0 0 60px rgba(255,220,0,1),0 0 120px rgba(255,180,0,0.6)} }
         @keyframes sun-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-        @keyframes gelisigüzel-bounce { 0%,100%{transform:translateX(-50%) translateY(0) rotate(-4deg)} 50%{transform:translateX(-50%) translateY(-3px) rotate(4deg)} }
+        @keyframes gelisiguzel-bounce { 0%,100%{transform:translateX(-50%) translateY(0) rotate(-4deg)} 50%{transform:translateX(-50%) translateY(-3px) rotate(4deg)} }
       `}</style>
 
       {/* Yıldızlar */}
@@ -266,7 +264,6 @@ export default function Home() {
             transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1)',
           }}
         >
-          {/* Güneş topu */}
           <div style={{
             width: 64, height: 64, borderRadius: '50%',
             background: 'radial-gradient(circle at 35% 30%, #fffde7, #ffcc02, #ff8c00)',
@@ -277,21 +274,18 @@ export default function Home() {
             position: 'relative',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            {/* Dönen ışınlar */}
             <div style={{
-              position: 'absolute', inset: -8,
-              borderRadius: '50%',
+              position: 'absolute', inset: -8, borderRadius: '50%',
               background: 'conic-gradient(from 0deg, transparent 0deg, rgba(255,220,0,0.15) 30deg, transparent 60deg, rgba(255,200,0,0.1) 90deg, transparent 120deg, rgba(255,220,0,0.15) 150deg, transparent 180deg, rgba(255,200,0,0.1) 210deg, transparent 240deg, rgba(255,220,0,0.15) 270deg, transparent 300deg, rgba(255,200,0,0.1) 330deg, transparent 360deg)',
               animation: 'sun-spin 8s linear infinite',
             }} />
           </div>
 
-          {/* GELİŞİGÜZEL etiketi */}
           <div style={{
             position: 'absolute',
             bottom: -32,
             left: '50%',
-            animation: 'gelisigüzel-bounce 2s ease-in-out infinite',
+            animation: 'gelisiguzel-bounce 2s ease-in-out infinite',
             whiteSpace: 'nowrap',
           }}>
             <div style={{
