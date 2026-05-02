@@ -1,91 +1,4 @@
-'use client';
-import { useEffect, useState, useRef } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
-
-function slugify(t) {
-  return t.toLowerCase()
-    .replace(/ğ/g,'g').replace(/ü/g,'u').replace(/ş/g,'s')
-    .replace(/ı/g,'i').replace(/ö/g,'o').replace(/ç/g,'c')
-    .replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
-}
-
-export default function Admin() {
-  const [oyunlar, setOyunlar] = useState([]);
-  const [tab, setTab] = useState('list');
-  const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState('');
-  const [ok, setOk] = useState(true);
-  const [uploadType, setUploadType] = useState('file');
-  const [form, setForm] = useState({
-    isim:'', slug:'', renk:'#33ccff',
-    html_kodu:'', game_url:'', kaynak_url:''
-  });
-  const fileRef = useRef();
-
-  const fetchOyunlar = async () => {
-    const { data } = await supabase.from('oyunlar').select('*').order('created_at',{ascending:false});
-    setOyunlar(data || []);
-  };
-  useEffect(() => { fetchOyunlar(); }, []);
-
-  const showMsg = (text, isOk=true) => { setMsg(text); setOk(isOk); setTimeout(()=>setMsg(''),4000); };
-
-  const handleFile = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (!file.name.match(/\.(html|htm)$/i)) { showMsg('❌ Sadece .html dosyası!', false); return; }
-    const text = await file.text();
-    setForm(f=>({...f, html_kodu:text}));
-    showMsg(`✅ ${file.name} yüklendi (${Math.round(text.length/1024)}KB)`);
-  };
-
-  const handleSave = async () => {
-    if (!form.isim.trim()) { showMsg('❌ Oyun adı zorunlu!',false); return; }
-    let html_kodu = '';
-    if (uploadType==='file'||uploadType==='paste') {
-      if (!form.html_kodu.trim()) { showMsg('❌ HTML gerekli!',false); return; }
-      html_kodu = form.html_kodu;
-    } else {
-      if (!form.game_url.trim()) { showMsg('❌ URL gerekli!',false); return; }
-      html_kodu = form.game_url;
-    }
-    setSaving(true);
-    const { error } = await supabase.from('oyunlar').insert([{
-      isim: form.isim.trim(),
-      slug: form.slug || slugify(form.isim),
-      renk: form.renk,
-      html_kodu,
-      kaynak_url: form.kaynak_url || null,
-      is_active: true,
-    }]);
-    if (error) { showMsg(`❌ ${error.message}`,false); }
-    else {
-      showMsg('✅ Oyun eklendi!');
-      setForm({ isim:'', slug:'', renk:'#33ccff', html_kodu:'', game_url:'', kaynak_url:'' });
-      if (fileRef.current) fileRef.current.value='';
-      await fetchOyunlar();
-      setTimeout(()=>setTab('list'),1200);
-    }
-    setSaving(false);
-  };
-
-  const handleDelete = async (id, isim) => {
-    if (!confirm(`"${isim}" silinsin mi?`)) return;
-    await supabase.from('oyunlar').delete().eq('id',id);
-    showMsg(`✅ "${isim}" silindi`);
-    fetchOyunlar();
-  };
-
-  const inp = { width:'100%', padding:'12px 16px', borderRadius:12, border:'1px solid rgba(255,255,255,0.15)', background:'rgba(255,255,255,0.08)', color:'white', fontSize:'1rem', fontFamily:"'Fredoka One',cursive", outline:'none', boxSizing:'border-box' };
-  const btnTab = (a) => ({ padding:'8px 20px', borderRadius:50, border:'none', cursor:'pointer', fontFamily:"'Fredoka One',cursive", fontWeight:700, background: a?'linear-gradient(135deg,#f093fb,#f5576c)':'rgba(255,255,255,0.1)', color: a?'white':'rgba(255,255,255,0.5)' });
-  const lbl = { display:'block', color:'rgba(255,255,255,0.6)', fontSize:'0.85rem', marginBottom:6 };
-
-  return (
+return (
     <div style={{ minHeight:'100vh', background:'linear-gradient(160deg,#0f0c29,#302b63)', fontFamily:"'Fredoka One',cursive", color:'white' }}>
       <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet" />
 
@@ -105,4 +18,73 @@ export default function Admin() {
         </div>
       )}
 
-      <div style={
+      <div style={{ padding: '0 28px 40px' }}>
+        {tab === 'list' ? (
+          <div style={{ display: 'grid', gap: 12 }}>
+            {oyunlar.map(o => (
+              <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: 16, borderRadius: 16, border: '1px solid rgba(255,255,255,0.1)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 12, height: 12, borderRadius: '50%', background: o.renk }}></div>
+                  <span style={{ fontSize: '1.1rem' }}>{o.isim}</span>
+                  <code style={{ fontSize: '0.8rem', opacity: 0.5 }}>/{o.slug}</code>
+                </div>
+                <button onClick={() => handleDelete(o.id, o.isim)} style={{ background: 'none', border: 'none', color: '#f5576c', cursor: 'pointer', fontSize: '1.2rem' }}>🗑️</button>
+              </div>
+            ))}
+            {oyunlar.length === 0 && <p style={{ opacity: 0.5 }}>Henüz oyun eklenmemiş.</p>}
+          </div>
+        ) : (
+          <div style={{ background: 'rgba(255,255,255,0.05)', padding: 24, borderRadius: 20, maxWidth: 600, border: '1px solid rgba(255,255,255,0.1)' }}>
+            <div style={{ marginBottom: 20 }}>
+              <label style={lbl}>Oyun Adı</label>
+              <input style={inp} value={form.isim} onChange={e => setForm({ ...form, isim: e.target.value })} placeholder="Örn: Balon Patlatma" />
+            </div>
+
+            <div style={{ marginBottom: 20 }}>
+              <label style={lbl}>Yükleme Tipi</label>
+              <select style={inp} value={uploadType} onChange={e => setUploadType(e.target.value)}>
+                <option value="file">HTML Dosyası Yükle</option>
+                <option value="paste">HTML Kodu Yapıştır</option>
+                <option value="url">Oyun URL'si (Iframe)</option>
+              </select>
+            </div>
+
+            {uploadType === 'file' && (
+              <div style={{ marginBottom: 20 }}>
+                <label style={lbl}>HTML Dosyası Seç</label>
+                <input type="file" ref={fileRef} onChange={handleFile} style={inp} accept=".html,.htm" />
+              </div>
+            )}
+
+            {uploadType === 'paste' && (
+              <div style={{ marginBottom: 20 }}>
+                <label style={lbl}>HTML İçeriği</label>
+                <textarea style={{ ...inp, height: 120, resize: 'vertical' }} value={form.html_kodu} onChange={e => setForm({ ...form, html_kodu: e.target.value })} placeholder="<html>...</html>" />
+              </div>
+            )}
+
+            {uploadType === 'url' && (
+              <div style={{ marginBottom: 20 }}>
+                <label style={lbl}>Oyun Linki (SRC URL)</label>
+                <input style={inp} value={form.game_url} onChange={e => setForm({ ...form, game_url: e.target.value })} placeholder="https://..." />
+              </div>
+            )}
+
+            <div style={{ marginBottom: 20 }}>
+              <label style={lbl}>Renk Teması</label>
+              <input type="color" style={{ ...inp, height: 50, padding: 4 }} value={form.renk} onChange={e => setForm({ ...form, renk: e.target.value })} />
+            </div>
+
+            <button 
+              disabled={saving} 
+              onClick={handleSave} 
+              style={{ ...btnTab(true), width: '100%', padding: 16, fontSize: '1.1rem', marginTop: 10 }}
+            >
+              {saving ? '⏳ Kaydediliyor...' : '🚀 Oyunu Yayınla'}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
