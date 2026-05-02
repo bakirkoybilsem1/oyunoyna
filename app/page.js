@@ -68,6 +68,16 @@ export default function Home() {
   const [sunClicked, setSunClicked] = useState(false);
   const lastOyunRef = useRef(null);
 
+  // Form state
+  const [formAcik, setFormAcik] = useState(false);
+  const [formOyunlar, setFormOyunlar] = useState([]);
+  const [seciliOyun, setSeciliOyun] = useState('');
+  const [adSoyad, setAdSoyad] = useState('');
+  const [istenenOyunlar, setIstenenOyunlar] = useState('');
+  const [gorusler, setGorusler] = useState('');
+  const [gonderildi, setGonderildi] = useState(false);
+  const [gonderiyor, setGonderiyor] = useState(false);
+
   const stars = useRef(Array.from({ length: 60 }, () => ({
     x: Math.random() * 100,
     y: Math.random() * 80,
@@ -114,14 +124,17 @@ export default function Home() {
     supabase.from('oyunlar').select('id, slug').eq('is_active', true).then(({ data }) => {
       if (data) setTumOyunlar(data);
     });
+
+    // Form için tüm oyun isimlerini çek
+    supabase.from('oyunlar').select('id, isim').eq('is_active', true).order('isim').then(({ data }) => {
+      if (data) setFormOyunlar(data);
+    });
   }, []);
 
   function rastgeleOyunAc() {
     if (tumOyunlar.length === 0) return;
-
     setSunClicked(true);
     setTimeout(() => setSunClicked(false), 300);
-
     let secilen;
     if (tumOyunlar.length === 1) {
       secilen = tumOyunlar[0];
@@ -129,9 +142,31 @@ export default function Home() {
       const diger = tumOyunlar.filter(o => o.id !== lastOyunRef.current);
       secilen = diger[Math.floor(Math.random() * diger.length)];
     }
-
     lastOyunRef.current = secilen.id;
     router.push(`/oyun/${secilen.slug}`);
+  }
+
+  async function formuGonder() {
+    if (!adSoyad.trim()) return;
+    setGonderiyor(true);
+    const { error } = await supabase.from('fikirler').insert({
+      ad_soyad: adSoyad.trim(),
+      sevilen_oyun: seciliOyun || null,
+      istenen_oyunlar: istenenOyunlar.trim() || null,
+      gorusler: gorusler.trim() || null,
+    });
+    setGonderiyor(false);
+    if (!error) {
+      setGonderildi(true);
+      setTimeout(() => {
+        setGonderildi(false);
+        setFormAcik(false);
+        setAdSoyad('');
+        setSeciliOyun('');
+        setIstenenOyunlar('');
+        setGorusler('');
+      }, 2500);
+    }
   }
 
   return (
@@ -155,6 +190,14 @@ export default function Home() {
         @keyframes sun-pulse { 0%,100%{box-shadow:0 0 40px rgba(255,200,0,0.7),0 0 80px rgba(255,150,0,0.35)} 50%{box-shadow:0 0 60px rgba(255,220,0,1),0 0 120px rgba(255,180,0,0.6)} }
         @keyframes sun-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
         @keyframes gelisiguzel-bounce { 0%,100%{transform:translateX(-50%) translateY(0) rotate(-4deg)} 50%{transform:translateX(-50%) translateY(-3px) rotate(4deg)} }
+        @keyframes modal-in { from{opacity:0;transform:translateY(40px) scale(0.95)} to{opacity:1;transform:translateY(0) scale(1)} }
+        @keyframes fikir-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(180,255,80,0.5)} 50%{box-shadow:0 0 0 10px rgba(180,255,80,0)} }
+        .oyun-chip { transition: all 0.18s; border-radius: 20px; padding: 6px 14px; font-size: 0.78rem; cursor: pointer; border: 1.5px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.5); font-family: 'Fredoka One', cursive; }
+        .oyun-chip:hover { border-color: rgba(180,255,80,0.6); color: rgba(255,255,255,0.85); }
+        .oyun-chip.secili { background: linear-gradient(135deg,#aaff44,#44dd88); border-color: #aaff44; color: #1a3a00; font-weight: 700; box-shadow: 0 0 12px rgba(150,255,80,0.5); }
+        .fikir-input { width: 100%; background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.2); border-radius: 12px; padding: 10px 14px; color: #fff; font-family: 'Fredoka One', cursive; font-size: 0.95rem; outline: none; box-sizing: border-box; transition: border-color 0.2s; }
+        .fikir-input:focus { border-color: rgba(180,255,80,0.6); }
+        .fikir-input::placeholder { color: rgba(255,255,255,0.3); }
       `}</style>
 
       {/* Yıldızlar */}
@@ -167,28 +210,25 @@ export default function Home() {
         ))}
       </svg>
 
-      {/* Güneş / Ay (arka plan animasyonu) */}
+      {/* Güneş / Ay */}
       <div style={{
         position: 'absolute', left: `${sunX}%`, bottom: `${sunY}%`,
         transform: 'translate(-50%, 50%)', pointerEvents: 'none', zIndex: 2,
-        transition: 'left 0.5s linear, bottom 0.5s linear',
       }}>
         <div style={{
           width: isNight ? 50 : 64, height: isNight ? 50 : 64, borderRadius: '50%',
           background: isNight
             ? 'radial-gradient(circle at 38% 35%, #fffde7, #fff9c4)'
             : `radial-gradient(circle at 38% 35%, #ffffff, ${sun}, #ff8c00)`,
-          boxShadow: isNight
-            ? '0 0 20px rgba(255,255,200,0.4)'
-            : `0 0 40px ${sun}, 0 0 80px ${sun}88`,
+          boxShadow: isNight ? '0 0 20px rgba(255,255,200,0.4)' : `0 0 40px ${sun}, 0 0 80px ${sun}88`,
         }} />
       </div>
 
       {/* Dağlar */}
       <svg style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', zIndex: 3 }}
-        viewBox="0 0 1440 220" preserveAspectRatio="none">
-        <path d="M0,220 L0,130 Q120,60 240,110 Q360,160 480,90 Q600,20 720,100 Q840,170 960,85 Q1080,10 1200,95 Q1320,160 1440,110 L1440,220 Z" fill="#0a0a1a" opacity="0.7" />
-        <path d="M0,220 L0,165 Q180,110 360,145 Q540,175 720,130 Q900,85 1080,140 Q1260,180 1440,150 L1440,220 Z" fill="#050510" opacity="0.9" />
+        viewBox="0 0 1440 280" preserveAspectRatio="none">
+        <path d="M0,280 L0,130 Q120,60 240,110 Q360,160 480,90 Q600,20 720,100 Q840,170 960,85 Q1080,10 1200,95 Q1320,160 1440,110 L1440,280 Z" fill="#0a0a1a" opacity="0.7" />
+        <path d="M0,280 L0,165 Q180,110 360,145 Q540,175 720,130 Q900,85 1080,140 Q1260,180 1440,150 L1440,280 Z" fill="#050510" opacity="0.9" />
       </svg>
 
       {/* Başlık */}
@@ -207,10 +247,7 @@ export default function Home() {
         position: 'fixed', left: 16, top: '50%', transform: 'translateY(-50%)',
         zIndex: 50, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
       }}>
-        <div style={{
-          width: 60, height: 60, borderRadius: '50%', overflow: 'hidden',
-          border: '2px solid rgba(255,255,255,0.3)', background: '#0a0a0a',
-        }}>
+        <div style={{ width: 60, height: 60, borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.3)', background: '#0a0a0a' }}>
           <video autoPlay loop muted playsInline
             src="https://ppbmdnnnlleoptdinzsn.supabase.co/storage/v1/object/public/suppilami.mp4/suppilami.mp4"
             style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }}
@@ -222,10 +259,7 @@ export default function Home() {
           textShadow: '0 2px 10px rgba(0,0,0,0.4)',
           animation: ziyaretSayisi !== null ? 'num-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) both' : 'none',
         }}>
-          {ziyaretSayisi === null
-            ? <span style={{ opacity: 0.3, fontSize: '1rem' }}>…</span>
-            : ziyaretSayisi.toLocaleString('tr-TR')
-          }
+          {ziyaretSayisi === null ? <span style={{ opacity: 0.3, fontSize: '1rem' }}>…</span> : ziyaretSayisi.toLocaleString('tr-TR')}
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '0.55rem', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>ziyaret</span>
@@ -239,27 +273,21 @@ export default function Home() {
       <div style={{
         position: 'relative', zIndex: 10,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        width: '100%', height: 'calc(100vh - 140px)',
+        width: '100%', height: 'calc(100vh - 180px)',
       }}>
-        {/* Yörünge halkası */}
         <div style={{
-          position: 'absolute',
-          width: ORBIT_R * 2, height: ORBIT_R * 2,
-          borderRadius: '50%',
-          border: '1px dashed rgba(255,255,255,0.12)',
-          pointerEvents: 'none',
+          position: 'absolute', width: ORBIT_R * 2, height: ORBIT_R * 2,
+          borderRadius: '50%', border: '1px dashed rgba(255,255,255,0.12)', pointerEvents: 'none',
         }} />
 
-        {/* MERKEZDEKİ GELİŞİGÜZEL GÜNEŞ */}
+        {/* Merkez Güneş */}
         <div
           onClick={rastgeleOyunAc}
           onMouseEnter={() => setSunHovered(true)}
           onMouseLeave={() => setSunHovered(false)}
           style={{
-            position: 'absolute',
-            cursor: tumOyunlar.length > 0 ? 'pointer' : 'default',
-            zIndex: 15,
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            position: 'absolute', cursor: tumOyunlar.length > 0 ? 'pointer' : 'default',
+            zIndex: 15, display: 'flex', flexDirection: 'column', alignItems: 'center',
             transform: sunClicked ? 'scale(0.9)' : sunHovered ? 'scale(1.12)' : 'scale(1)',
             transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1)',
           }}
@@ -271,8 +299,7 @@ export default function Home() {
               ? '0 0 30px rgba(255,220,0,1), 0 0 70px rgba(255,180,0,0.7), 0 0 0 4px rgba(255,255,200,0.3)'
               : '0 0 24px rgba(255,200,0,0.8), 0 0 50px rgba(255,150,0,0.4)',
             animation: 'sun-pulse 3s ease-in-out infinite',
-            position: 'relative',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <div style={{
               position: 'absolute', inset: -8, borderRadius: '50%',
@@ -280,28 +307,17 @@ export default function Home() {
               animation: 'sun-spin 8s linear infinite',
             }} />
           </div>
-
           <div style={{
-            position: 'absolute',
-            bottom: -32,
-            left: '50%',
-            animation: 'gelisiguzel-bounce 2s ease-in-out infinite',
-            whiteSpace: 'nowrap',
+            position: 'absolute', bottom: -32, left: '50%',
+            animation: 'gelisiguzel-bounce 2s ease-in-out infinite', whiteSpace: 'nowrap',
           }}>
             <div style={{
-              background: sunHovered
-                ? 'linear-gradient(135deg, #ffcc02, #ff8c00)'
-                : 'rgba(255,200,0,0.15)',
-              border: '1.5px solid rgba(255,200,0,0.6)',
-              borderRadius: 20,
-              padding: '3px 10px',
-              color: sunHovered ? '#3d1a00' : '#ffdd44',
-              fontSize: '0.62rem',
-              fontWeight: 700,
-              letterSpacing: '0.05em',
+              background: sunHovered ? 'linear-gradient(135deg, #ffcc02, #ff8c00)' : 'rgba(255,200,0,0.15)',
+              border: '1.5px solid rgba(255,200,0,0.6)', borderRadius: 20,
+              padding: '3px 10px', color: sunHovered ? '#3d1a00' : '#ffdd44',
+              fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.05em',
               textShadow: sunHovered ? 'none' : '0 0 8px rgba(255,200,0,0.8)',
-              transition: 'all 0.2s',
-              backdropFilter: 'blur(4px)',
+              transition: 'all 0.2s', backdropFilter: 'blur(4px)',
             }}>
               🎲 GELİŞİGÜZEL
             </div>
@@ -314,7 +330,6 @@ export default function Home() {
             Gezegenler yükleniyor... 🪐
           </p>
         )}
-
         {odalar.map((oda, i) => {
           const n = odalar.length;
           const angleDeg = (360 / n) * i - 90;
@@ -324,60 +339,39 @@ export default function Home() {
           const style = PLANET_STYLES[i % PLANET_STYLES.length];
           const count = oyunSayilari[oda.id] || 0;
           const isHovered = hoveredId === oda.id;
-
           return (
-            <div
-              key={oda.id}
+            <div key={oda.id}
               onClick={() => router.push(`/oda/${oda.id}`)}
               onMouseEnter={() => setHoveredId(oda.id)}
               onMouseLeave={() => setHoveredId(null)}
               style={{
-                position: 'absolute',
-                left: '50%', top: '50%',
+                position: 'absolute', left: '50%', top: '50%',
                 marginLeft: cx, marginTop: cy,
                 transform: `translate(-50%, -50%) scale(${isHovered ? 1.2 : 1})`,
                 animation: `float-${i % 5} ${3.2 + i * 0.4}s ease-in-out infinite`,
                 animationDelay: `${i * 0.6}s`,
-                cursor: 'pointer',
-                zIndex: isHovered ? 20 : 10,
+                cursor: 'pointer', zIndex: isHovered ? 20 : 10,
                 transition: 'transform 0.25s cubic-bezier(0.34,1.56,0.64,1)',
               }}
             >
               <div style={{
                 width: style.size, height: style.size, borderRadius: '50%',
-                background: `
-                  radial-gradient(circle at 35% 30%, rgba(255,255,255,0.3), transparent 50%),
-                  radial-gradient(circle at 65% 70%, rgba(0,0,0,0.25), transparent 50%),
-                  ${style.color}
-                `,
-                boxShadow: isHovered
-                  ? `${style.shadow}, 0 0 0 3px rgba(255,255,255,0.3)`
-                  : style.shadow,
+                background: `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.3), transparent 50%), radial-gradient(circle at 65% 70%, rgba(0,0,0,0.25), transparent 50%), ${style.color}`,
+                boxShadow: isHovered ? `${style.shadow}, 0 0 0 3px rgba(255,255,255,0.3)` : style.shadow,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: style.size * 0.42,
-                transition: 'box-shadow 0.2s',
+                fontSize: style.size * 0.42, transition: 'box-shadow 0.2s',
               }}>
                 {oda.emoji}
               </div>
-
               <div style={{
-                position: 'absolute',
-                bottom: -(isHovered ? 44 : 38),
+                position: 'absolute', bottom: -(isHovered ? 44 : 38),
                 left: '50%', transform: 'translateX(-50%)',
-                whiteSpace: 'nowrap', textAlign: 'center',
-                transition: 'bottom 0.2s',
+                whiteSpace: 'nowrap', textAlign: 'center', transition: 'bottom 0.2s',
               }}>
-                <div style={{
-                  color: '#fff', fontSize: '0.78rem', fontWeight: 700,
-                  textShadow: '0 1px 8px rgba(0,0,0,0.9)',
-                }}>
+                <div style={{ color: '#fff', fontSize: '0.78rem', fontWeight: 700, textShadow: '0 1px 8px rgba(0,0,0,0.9)' }}>
                   {oda.isim}
                 </div>
-                <div style={{
-                  color: style.color, fontSize: '0.65rem',
-                  textShadow: `0 0 10px ${style.color}`,
-                  marginTop: 2,
-                }}>
+                <div style={{ color: style.color, fontSize: '0.65rem', textShadow: `0 0 10px ${style.color}`, marginTop: 2 }}>
                   {count} oyun 🎮
                 </div>
               </div>
@@ -385,6 +379,160 @@ export default function Home() {
           );
         })}
       </div>
+
+      {/* BİR FİKRİM VAR BUTONU */}
+      <div style={{
+        position: 'relative', zIndex: 10,
+        display: 'flex', justifyContent: 'center',
+        paddingBottom: 100,
+      }}>
+        <button
+          onClick={() => setFormAcik(true)}
+          style={{
+            background: 'linear-gradient(135deg, #ffe600, #44dd44)',
+            border: 'none', borderRadius: 30,
+            padding: '12px 32px',
+            fontFamily: "'Fredoka One', cursive",
+            fontSize: '1.1rem', fontWeight: 700,
+            color: '#1a3a00', cursor: 'pointer',
+            boxShadow: '0 0 20px rgba(180,255,80,0.5), 0 4px 20px rgba(0,0,0,0.3)',
+            animation: 'fikir-pulse 2.5s ease-in-out infinite',
+            letterSpacing: '0.03em',
+            transition: 'transform 0.15s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.07)'}
+          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+        >
+          💡 Bir Fikrim Var!
+        </button>
+      </div>
+
+      {/* FORM MODAL */}
+      {formAcik && (
+        <div
+          onClick={e => { if (e.target === e.currentTarget) setFormAcik(false); }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 100,
+            background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 16,
+          }}
+        >
+          <div style={{
+            background: 'linear-gradient(160deg, #0d1b2a, #1a2a1a)',
+            border: '1.5px solid rgba(180,255,80,0.3)',
+            borderRadius: 24, padding: '28px 24px',
+            width: '100%', maxWidth: 480,
+            maxHeight: '90vh', overflowY: 'auto',
+            animation: 'modal-in 0.3s cubic-bezier(0.34,1.56,0.64,1) both',
+            boxShadow: '0 0 60px rgba(100,220,60,0.15), 0 20px 60px rgba(0,0,0,0.5)',
+          }}>
+            {gonderildi ? (
+              <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                <div style={{ fontSize: '3rem', marginBottom: 12 }}>🎉</div>
+                <div style={{ color: '#aaff44', fontSize: '1.3rem', fontWeight: 700 }}>Teşekkürler!</div>
+                <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem', marginTop: 8 }}>Fikrin kaydedildi!</div>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                  <h2 style={{ color: '#aaff44', margin: 0, fontSize: '1.3rem', textShadow: '0 0 20px rgba(150,255,80,0.5)' }}>
+                    💡 Bir Fikrim Var!
+                  </h2>
+                  <button
+                    onClick={() => setFormAcik(false)}
+                    style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '1.4rem', cursor: 'pointer', lineHeight: 1 }}
+                  >✕</button>
+                </div>
+
+                {/* Ad Soyad */}
+                <div style={{ marginBottom: 18 }}>
+                  <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', display: 'block', marginBottom: 8 }}>
+                    1. Adı - Soyadı
+                  </label>
+                  <input
+                    className="fikir-input"
+                    type="text"
+                    placeholder="Adınızı ve soyadınızı yazın..."
+                    value={adSoyad}
+                    onChange={e => setAdSoyad(e.target.value)}
+                  />
+                </div>
+
+                {/* En çok sevilen oyun */}
+                <div style={{ marginBottom: 18 }}>
+                  <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', display: 'block', marginBottom: 10 }}>
+                    2. En çok sevdiğiniz oyun
+                  </label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {formOyunlar.map(oyun => (
+                      <button
+                        key={oyun.id}
+                        className={`oyun-chip${seciliOyun === oyun.isim ? ' secili' : ''}`}
+                        onClick={() => setSeciliOyun(seciliOyun === oyun.isim ? '' : oyun.isim)}
+                      >
+                        {oyun.isim}
+                      </button>
+                    ))}
+                    {formOyunlar.length === 0 && (
+                      <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.8rem' }}>Oyunlar yükleniyor...</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* İstenen oyunlar */}
+                <div style={{ marginBottom: 18 }}>
+                  <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', display: 'block', marginBottom: 8 }}>
+                    3. Hangi oyunların eklenmesini istersiniz?
+                  </label>
+                  <textarea
+                    className="fikir-input"
+                    rows={3}
+                    placeholder="Eklemek istediğiniz oyunları yazın..."
+                    value={istenenOyunlar}
+                    onChange={e => setIstenenOyunlar(e.target.value)}
+                    style={{ resize: 'vertical' }}
+                  />
+                </div>
+
+                {/* Görüş ve öneriler */}
+                <div style={{ marginBottom: 24 }}>
+                  <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', display: 'block', marginBottom: 8 }}>
+                    4. Görüş ve önerileriniz
+                  </label>
+                  <textarea
+                    className="fikir-input"
+                    rows={3}
+                    placeholder="Düşüncelerinizi paylaşın..."
+                    value={gorusler}
+                    onChange={e => setGorusler(e.target.value)}
+                    style={{ resize: 'vertical' }}
+                  />
+                </div>
+
+                <button
+                  onClick={formuGonder}
+                  disabled={!adSoyad.trim() || gonderiyor}
+                  style={{
+                    width: '100%', padding: '12px',
+                    background: adSoyad.trim()
+                      ? 'linear-gradient(135deg, #aaff44, #44cc44)'
+                      : 'rgba(255,255,255,0.1)',
+                    border: 'none', borderRadius: 14,
+                    color: adSoyad.trim() ? '#1a3a00' : 'rgba(255,255,255,0.3)',
+                    fontFamily: "'Fredoka One', cursive",
+                    fontSize: '1rem', fontWeight: 700, cursor: adSoyad.trim() ? 'pointer' : 'not-allowed',
+                    transition: 'all 0.2s',
+                    boxShadow: adSoyad.trim() ? '0 0 20px rgba(150,255,80,0.3)' : 'none',
+                  }}
+                >
+                  {gonderiyor ? '⏳ Gönderiliyor...' : '🚀 Gönder'}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </main>
   );
 }
