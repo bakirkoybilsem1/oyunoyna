@@ -60,9 +60,14 @@ const ORBIT_R = 160;
 
 export default function Home() {
   const [odalar, setOdalar] = useState([]);
+  const [tumOyunlar, setTumOyunlar] = useState([]);
   const [oyunSayilari, setOyunSayilari] = useState({});
   const [ziyaretSayisi, setZiyaretSayisi] = useState(null);
   const [hoveredId, setHoveredId] = useState(null);
+  const [sunHovered, setSunHovered] = useState(false);
+  const [sunClicked, setSunClicked] = useState(false);
+  const lastOyunRef = useRef(null);
+
   const stars = useRef(Array.from({ length: 60 }, () => ({
     x: Math.random() * 100,
     y: Math.random() * 80,
@@ -105,7 +110,31 @@ export default function Home() {
         });
       }
     });
+
+    // Tüm aktif oyunları çek (rastgele seçim için)
+    supabase.from('oyunlar').select('id, oda_id').eq('is_active', true).then(({ data }) => {
+      if (data) setTumOyunlar(data);
+    });
   }, []);
+
+  function rastgeleOyunAc() {
+    if (tumOyunlar.length === 0) return;
+
+    setSunClicked(true);
+    setTimeout(() => setSunClicked(false), 300);
+
+    let secilen;
+    if (tumOyunlar.length === 1) {
+      secilen = tumOyunlar[0];
+    } else {
+      // Son açılan oyunu tekrar açmamak için filtrele
+      const diger = tumOyunlar.filter(o => o.id !== lastOyunRef.current);
+      secilen = diger[Math.floor(Math.random() * diger.length)];
+    }
+
+    lastOyunRef.current = secilen.id;
+    router.push(`/oda/${secilen.oda_id}/oyun/${secilen.id}`);
+  }
 
   return (
     <main style={{
@@ -125,7 +154,9 @@ export default function Home() {
         @keyframes star-twinkle { 0%,100%{opacity:0.8} 50%{opacity:0.1} }
         @keyframes live-ping { 0%,100%{box-shadow:0 0 0 0 rgba(134,239,172,0.8)} 50%{box-shadow:0 0 0 5px rgba(134,239,172,0)} }
         @keyframes num-pop { from{opacity:0;transform:scale(0.5)} to{opacity:1;transform:scale(1)} }
-        @keyframes sun-glow { 0%,100%{box-shadow:0 0 40px rgba(255,200,0,0.6),0 0 80px rgba(255,150,0,0.3)} 50%{box-shadow:0 0 60px rgba(255,220,0,0.9),0 0 120px rgba(255,180,0,0.5)} }
+        @keyframes sun-pulse { 0%,100%{box-shadow:0 0 40px rgba(255,200,0,0.7),0 0 80px rgba(255,150,0,0.35)} 50%{box-shadow:0 0 60px rgba(255,220,0,1),0 0 120px rgba(255,180,0,0.6)} }
+        @keyframes sun-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+        @keyframes gelisigüzel-bounce { 0%,100%{transform:translateX(-50%) translateY(0) rotate(-4deg)} 50%{transform:translateX(-50%) translateY(-3px) rotate(4deg)} }
       `}</style>
 
       {/* Yıldızlar */}
@@ -138,7 +169,7 @@ export default function Home() {
         ))}
       </svg>
 
-      {/* Güneş / Ay */}
+      {/* Güneş / Ay (arka plan animasyonu) */}
       <div style={{
         position: 'absolute', left: `${sunX}%`, bottom: `${sunY}%`,
         transform: 'translate(-50%, 50%)', pointerEvents: 'none', zIndex: 2,
@@ -152,7 +183,6 @@ export default function Home() {
           boxShadow: isNight
             ? '0 0 20px rgba(255,255,200,0.4)'
             : `0 0 40px ${sun}, 0 0 80px ${sun}88`,
-          animation: 'sun-glow 3s ease-in-out infinite',
         }} />
       </div>
 
@@ -211,7 +241,7 @@ export default function Home() {
       <div style={{
         position: 'relative', zIndex: 10,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        width: '100%', height: 'calc(100vh - 140px)', marginTop: 0,
+        width: '100%', height: 'calc(100vh - 140px)',
       }}>
         {/* Yörünge halkası */}
         <div style={{
@@ -222,18 +252,71 @@ export default function Home() {
           pointerEvents: 'none',
         }} />
 
-        {/* Merkez güneş (küçük) */}
-        <div style={{
-          position: 'absolute',
-          width: 48, height: 48, borderRadius: '50%',
-          background: 'radial-gradient(circle at 35% 30%, #fffde7, #ffcc02, #ff8c00)',
-          boxShadow: '0 0 24px rgba(255,200,0,0.8), 0 0 50px rgba(255,150,0,0.4)',
-          zIndex: 5,
-        }} />
+        {/* MERKEZDEKİ GELİŞİGÜZEL GÜNEŞ */}
+        <div
+          onClick={rastgeleOyunAc}
+          onMouseEnter={() => setSunHovered(true)}
+          onMouseLeave={() => setSunHovered(false)}
+          style={{
+            position: 'absolute',
+            cursor: tumOyunlar.length > 0 ? 'pointer' : 'default',
+            zIndex: 15,
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            transform: sunClicked ? 'scale(0.9)' : sunHovered ? 'scale(1.12)' : 'scale(1)',
+            transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1)',
+          }}
+        >
+          {/* Güneş topu */}
+          <div style={{
+            width: 64, height: 64, borderRadius: '50%',
+            background: 'radial-gradient(circle at 35% 30%, #fffde7, #ffcc02, #ff8c00)',
+            boxShadow: sunHovered
+              ? '0 0 30px rgba(255,220,0,1), 0 0 70px rgba(255,180,0,0.7), 0 0 0 4px rgba(255,255,200,0.3)'
+              : '0 0 24px rgba(255,200,0,0.8), 0 0 50px rgba(255,150,0,0.4)',
+            animation: 'sun-pulse 3s ease-in-out infinite',
+            position: 'relative',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            {/* Dönen ışınlar */}
+            <div style={{
+              position: 'absolute', inset: -8,
+              borderRadius: '50%',
+              background: 'conic-gradient(from 0deg, transparent 0deg, rgba(255,220,0,0.15) 30deg, transparent 60deg, rgba(255,200,0,0.1) 90deg, transparent 120deg, rgba(255,220,0,0.15) 150deg, transparent 180deg, rgba(255,200,0,0.1) 210deg, transparent 240deg, rgba(255,220,0,0.15) 270deg, transparent 300deg, rgba(255,200,0,0.1) 330deg, transparent 360deg)',
+              animation: 'sun-spin 8s linear infinite',
+            }} />
+          </div>
+
+          {/* GELİŞİGÜZEL etiketi */}
+          <div style={{
+            position: 'absolute',
+            bottom: -32,
+            left: '50%',
+            animation: 'gelisigüzel-bounce 2s ease-in-out infinite',
+            whiteSpace: 'nowrap',
+          }}>
+            <div style={{
+              background: sunHovered
+                ? 'linear-gradient(135deg, #ffcc02, #ff8c00)'
+                : 'rgba(255,200,0,0.15)',
+              border: '1.5px solid rgba(255,200,0,0.6)',
+              borderRadius: 20,
+              padding: '3px 10px',
+              color: sunHovered ? '#3d1a00' : '#ffdd44',
+              fontSize: '0.62rem',
+              fontWeight: 700,
+              letterSpacing: '0.05em',
+              textShadow: sunHovered ? 'none' : '0 0 8px rgba(255,200,0,0.8)',
+              transition: 'all 0.2s',
+              backdropFilter: 'blur(4px)',
+            }}>
+              🎲 GELİŞİGÜZEL
+            </div>
+          </div>
+        </div>
 
         {/* Gezegenler */}
         {odalar.length === 0 && (
-          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '1rem', position: 'absolute' }}>
+          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '1rem', position: 'absolute', top: '60%' }}>
             Gezegenler yükleniyor... 🪐
           </p>
         )}
@@ -266,7 +349,6 @@ export default function Home() {
                 transition: 'transform 0.25s cubic-bezier(0.34,1.56,0.64,1)',
               }}
             >
-              {/* Gezegen topu */}
               <div style={{
                 width: style.size, height: style.size, borderRadius: '50%',
                 background: `
@@ -279,13 +361,11 @@ export default function Home() {
                   : style.shadow,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: style.size * 0.42,
-                filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))',
                 transition: 'box-shadow 0.2s',
               }}>
                 {oda.emoji}
               </div>
 
-              {/* İsim etiketi */}
               <div style={{
                 position: 'absolute',
                 bottom: -(isHovered ? 44 : 38),
@@ -295,8 +375,7 @@ export default function Home() {
               }}>
                 <div style={{
                   color: '#fff', fontSize: '0.78rem', fontWeight: 700,
-                  textShadow: '0 1px 8px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.8)',
-                  letterSpacing: '0.02em',
+                  textShadow: '0 1px 8px rgba(0,0,0,0.9)',
                 }}>
                   {oda.isim}
                 </div>
