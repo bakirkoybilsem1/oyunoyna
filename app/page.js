@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -48,34 +48,46 @@ function getSkyColors(t) {
   return { sky1: lerp(a.sky1,b.sky1), sky2: lerp(a.sky2,b.sky2), sun: lerp(a.sun,b.sun), horizon: lerp(a.horizon,b.horizon) };
 }
 
-const CARD_STYLES = ['neon-yellow','holo-green','crystal-blue','fusion-orange','crystal-red'];
+const PLANET_STYLES = [
+  { color: '#ffe600', shadow: '0 0 20px #ffe600, 0 0 50px rgba(255,230,0,0.4)', size: 80 },
+  { color: '#00ff64', shadow: '0 0 20px #00ff64, 0 0 50px rgba(0,255,100,0.35)', size: 70 },
+  { color: '#64c8ff', shadow: '0 0 20px #64c8ff, 0 0 50px rgba(0,180,255,0.35)', size: 66 },
+  { color: '#ff6600', shadow: '0 0 20px #ff6600, 0 0 50px rgba(255,100,0,0.4)', size: 62 },
+  { color: '#ff2244', shadow: '0 0 20px #ff2244, 0 0 50px rgba(255,0,60,0.35)', size: 68 },
+];
+
+const ORBIT_R = 160;
 
 export default function Home() {
   const [odalar, setOdalar] = useState([]);
   const [oyunSayilari, setOyunSayilari] = useState({});
   const [ziyaretSayisi, setZiyaretSayisi] = useState(null);
+  const [hoveredId, setHoveredId] = useState(null);
+  const stars = useRef(Array.from({ length: 60 }, () => ({
+    x: Math.random() * 100,
+    y: Math.random() * 80,
+    s: Math.random() * 1.5 + 0.5,
+    d: Math.random() * 3 + 2,
+    delay: Math.random() * 4,
+  }))).current;
+
   const t = useSunCycle();
   const { sky1, sky2, sun, horizon } = getSkyColors(t);
-  const sunY = Math.sin(t * Math.PI) * 75;
-  const sunX = 10 + t * 80;
+  const sunY = Math.sin(t * Math.PI) * 70;
+  const sunX = 8 + t * 84;
   const isNight = t < 0.12 || t > 0.88;
-  const starOpacity = t < 0.15 ? (0.15-t)/0.15 : t > 0.85 ? (t-0.85)/0.15 : 0;
-  const stars = useRef(Array.from({length:60}, ()=>({ x:Math.random()*100, y:Math.random()*60, s:Math.random()*2+0.5 }))).current;
+  const starOpacity = t < 0.15 ? (0.15 - t) / 0.15 : t > 0.85 ? (t - 0.85) / 0.15 : 0;
+  const router = useRouter();
 
   useEffect(() => {
     async function sayaciArtir() {
       const { data, error } = await supabase
         .from('ziyaret_sayaci').select('sayi').eq('id', 1).single();
-      if (error) { console.error('Sayaç okuma hatası:', error.message); return; }
+      if (error) return;
       const yeniSayi = (data?.sayi ?? 0) + 1;
       const { error: updateError } = await supabase
         .from('ziyaret_sayaci').update({ sayi: yeniSayi }).eq('id', 1);
-      if (updateError) {
-        console.error('Sayaç güncelleme hatası:', updateError.message);
-        setZiyaretSayisi(data?.sayi ?? 0);
-        return;
-      }
-      setZiyaretSayisi(yeniSayi);
+      setZiyaretSayisi(updateError ? data?.sayi ?? 0 : yeniSayi);
     }
     sayaciArtir();
   }, []);
@@ -85,9 +97,11 @@ export default function Home() {
       if (data) {
         setOdalar(data);
         data.forEach(oda => {
-          supabase.from('oyunlar').select('id', { count: 'exact' }).eq('oda_id', oda.id).eq('is_active', true).then(({ count }) => {
-            setOyunSayilari(prev => ({ ...prev, [oda.id]: count || 0 }));
-          });
+          supabase.from('oyunlar').select('id', { count: 'exact' })
+            .eq('oda_id', oda.id).eq('is_active', true)
+            .then(({ count }) => {
+              setOyunSayilari(prev => ({ ...prev, [oda.id]: count || 0 }));
+            });
         });
       }
     });
@@ -96,199 +110,208 @@ export default function Home() {
   return (
     <main style={{
       minHeight: '100vh', overflow: 'hidden', position: 'relative',
-      fontFamily: "'Fredoka One',cursive",
-      background: `linear-gradient(180deg, ${sky1} 0%, ${sky2} 60%, ${horizon} 100%)`
+      fontFamily: "'Fredoka One', cursive",
+      background: `linear-gradient(180deg, ${sky1} 0%, ${sky2} 60%, ${horizon} 100%)`,
+      transition: 'background 2s ease',
     }}>
-      <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Syne:wght@800&family=Space+Grotesk:wght@500&display=swap" rel="stylesheet"/>
+      <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Syne:wght@800&family=Space+Grotesk:wght@500&display=swap" rel="stylesheet" />
 
       <style>{`
-        .oda-card {
-          width: 160px; min-height: 180px; border-radius: 24px;
-          display: flex; flex-direction: column; align-items: center; justify-content: center;
-          padding: 20px 12px; cursor: pointer; position: relative; overflow: hidden;
-          transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
-          text-decoration: none;
-        }
-        .oda-card:hover { transform: translateY(-10px) scale(1.07); }
-        .card-emoji { font-size:48px; margin-bottom:10px; filter:drop-shadow(0 4px 8px rgba(0,0,0,0.4)); position:relative; z-index:1; }
-        .card-name  { color:#fff; font-weight:700; font-size:1.1rem; text-align:center; line-height:1.3; position:relative; z-index:1; }
-        .card-badge { margin-top:10px; border-radius:20px; padding:3px 12px; font-size:0.75rem; color:rgba(255,255,255,0.85); position:relative; z-index:1; }
-
-        @keyframes holo-spin     { to { transform: rotate(360deg); } }
-        @keyframes crystal-pulse { 0%,100%{opacity:.3;transform:scale(1)} 50%{opacity:.7;transform:scale(1.3)} }
-        @keyframes sweep         { 0%{left:-100%} 100%{left:150%} }
-        @keyframes live-ping     { 0%,100%{box-shadow:0 0 0 0 rgba(134,239,172,0.8)} 50%{box-shadow:0 0 0 6px rgba(134,239,172,0)} }
-        @keyframes num-pop       { from{opacity:0;transform:scale(0.5)} to{opacity:1;transform:scale(1)} }
-
-        .card-neon-yellow {
-          background: rgba(0,0,0,0.55);
-          border: 2px solid #ffe600;
-          box-shadow: 0 0 8px #ffe600, 0 0 24px #ffe600, 0 0 50px rgba(255,230,0,0.3), inset 0 0 20px rgba(255,230,0,0.04);
-        }
-        .card-neon-yellow::before {
-          content:''; position:absolute; inset:-2px; border-radius:26px;
-          border:2px solid #ffe600; filter:blur(8px); opacity:0.6; pointer-events:none;
-        }
-        .card-neon-yellow::after {
-          content:''; position:absolute; top:0; left:10%; right:10%; height:1px;
-          background:linear-gradient(90deg,transparent,#ffe600,transparent); pointer-events:none;
-        }
-        .card-neon-yellow .card-badge { background:rgba(255,230,0,0.12); border:1px solid #ffe600; color:#ffe600; }
-        .card-neon-yellow .card-name  { text-shadow:0 0 16px rgba(255,230,0,0.8),0 2px 8px rgba(0,0,0,0.8); }
-
-        .card-holo-green {
-          background: linear-gradient(135deg,rgba(0,255,100,0.1),rgba(0,200,80,0.05),rgba(0,255,150,0.08));
-          border: 1px solid rgba(0,255,100,0.4);
-          backdrop-filter: blur(12px);
-        }
-        .card-holo-green::before {
-          content:''; position:absolute; inset:0; border-radius:24px; pointer-events:none;
-          background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,255,100,0.03) 3px,rgba(0,255,100,0.03) 4px);
-        }
-        .card-holo-green::after {
-          content:''; position:absolute; top:-50%; left:-50%; width:200%; height:200%; pointer-events:none;
-          background:conic-gradient(from 0deg,transparent 0deg,rgba(0,255,100,0.08) 60deg,rgba(0,200,50,0.06) 120deg,transparent 180deg);
-          animation:holo-spin 5s linear infinite;
-        }
-        .card-holo-green .card-badge { background:rgba(0,255,100,0.12); border:1px solid rgba(0,255,100,0.4); color:#00ff64; }
-        .card-holo-green .card-name  { text-shadow:0 0 20px rgba(0,255,100,0.8),0 2px 8px rgba(0,0,0,0.8); }
-
-        .card-crystal-blue {
-          background: linear-gradient(145deg,rgba(0,150,255,0.2) 0%,rgba(0,80,200,0.06) 40%,rgba(0,200,255,0.14) 100%);
-          border: 1px solid rgba(0,180,255,0.5);
-          backdrop-filter: blur(20px);
-        }
-        .card-crystal-blue::before {
-          content:''; position:absolute; top:-30%; left:-20%; width:60%; height:60%; pointer-events:none;
-          background:radial-gradient(ellipse,rgba(100,200,255,0.4) 0%,transparent 70%);
-          border-radius:50%; transform:rotate(-30deg);
-        }
-        .card-crystal-blue::after {
-          content:''; position:absolute; bottom:10%; right:-10%; width:40%; height:40%; pointer-events:none;
-          background:radial-gradient(ellipse,rgba(0,150,255,0.5) 0%,transparent 70%);
-          animation:crystal-pulse 3s ease-in-out infinite;
-        }
-        .card-crystal-blue .card-badge { background:rgba(0,150,255,0.18); border:1px solid rgba(0,180,255,0.4); color:rgba(100,210,255,0.95); }
-        .card-crystal-blue .card-name  { text-shadow:0 0 24px rgba(0,180,255,0.8),0 2px 8px rgba(0,0,0,0.8); }
-
-        .card-fusion-orange {
-          background: linear-gradient(135deg,rgba(255,100,0,0.14),rgba(255,60,0,0.08));
-          border: 2px solid #ff6600;
-          box-shadow: 0 0 10px #ff6600, 0 0 28px rgba(255,100,0,0.4), inset 0 0 25px rgba(255,100,0,0.05);
-        }
-        .card-fusion-orange::before {
-          content:''; position:absolute; inset:0; border-radius:24px; pointer-events:none;
-          background:repeating-linear-gradient(45deg,transparent,transparent 8px,rgba(255,100,0,0.04) 8px,rgba(255,100,0,0.04) 9px);
-        }
-        .card-fusion-orange::after {
-          content:''; position:absolute; top:-50%; left:-100%; width:80%; height:200%; pointer-events:none;
-          background:linear-gradient(90deg,transparent,rgba(255,150,50,0.15),transparent);
-          animation:sweep 2.5s ease-in-out infinite;
-        }
-        .card-fusion-orange .card-badge { background:rgba(255,100,0,0.2); border:1px solid #ff6600; color:#ffaa44; }
-        .card-fusion-orange .card-name  { text-shadow:0 0 20px rgba(255,100,0,0.9),0 2px 8px rgba(0,0,0,0.8); }
-
-        .card-crystal-red {
-          background: linear-gradient(160deg,rgba(255,0,60,0.15),rgba(200,0,40,0.06));
-          border: 2px solid #ff2244;
-          box-shadow: 0 0 10px #ff2244, 0 0 28px rgba(255,0,60,0.35), inset 0 0 25px rgba(255,0,60,0.06);
-        }
-        .card-crystal-red::before {
-          content:''; position:absolute; top:-40%; left:-20%; width:70%; height:70%; pointer-events:none;
-          background:radial-gradient(ellipse,rgba(255,80,100,0.25) 0%,transparent 70%);
-        }
-        .card-crystal-red::after {
-          content:''; position:absolute; bottom:-20%; right:-20%; width:60%; height:60%; pointer-events:none;
-          background:radial-gradient(ellipse,rgba(255,0,60,0.25) 0%,transparent 70%);
-          animation:crystal-pulse 4s ease-in-out infinite reverse;
-        }
-        .card-crystal-red .card-badge { background:rgba(255,0,60,0.2); border:1px solid #ff2244; color:#ff8899; }
-        .card-crystal-red .card-name  { text-shadow:0 0 20px rgba(255,30,70,0.9),0 2px 8px rgba(0,0,0,0.8); }
+        @keyframes float-0 { 0%,100%{transform:translate(-50%,-50%) translateY(0)} 50%{transform:translate(-50%,-50%) translateY(-8px)} }
+        @keyframes float-1 { 0%,100%{transform:translate(-50%,-50%) translateY(0)} 50%{transform:translate(-50%,-50%) translateY(-6px)} }
+        @keyframes float-2 { 0%,100%{transform:translate(-50%,-50%) translateY(0)} 50%{transform:translate(-50%,-50%) translateY(-9px)} }
+        @keyframes float-3 { 0%,100%{transform:translate(-50%,-50%) translateY(0)} 50%{transform:translate(-50%,-50%) translateY(-5px)} }
+        @keyframes float-4 { 0%,100%{transform:translate(-50%,-50%) translateY(0)} 50%{transform:translate(-50%,-50%) translateY(-7px)} }
+        @keyframes star-twinkle { 0%,100%{opacity:0.8} 50%{opacity:0.1} }
+        @keyframes live-ping { 0%,100%{box-shadow:0 0 0 0 rgba(134,239,172,0.8)} 50%{box-shadow:0 0 0 5px rgba(134,239,172,0)} }
+        @keyframes num-pop { from{opacity:0;transform:scale(0.5)} to{opacity:1;transform:scale(1)} }
+        @keyframes sun-glow { 0%,100%{box-shadow:0 0 40px rgba(255,200,0,0.6),0 0 80px rgba(255,150,0,0.3)} 50%{box-shadow:0 0 60px rgba(255,220,0,0.9),0 0 120px rgba(255,180,0,0.5)} }
       `}</style>
 
-      {/* ZİYARET SAYACI */}
-      <div style={{
-        position:'fixed', left:16, top:'50%', transform:'translateY(-50%)',
-        zIndex:50, display:'flex', flexDirection:'column', alignItems:'center', gap:6,
-      }}>
-        <div style={{
-          width:72, height:72, borderRadius:'50%', overflow:'hidden',
-          border:'2px solid rgba(255,255,255,0.35)', background:'#0a0a0a', flexShrink:0,
-        }}>
-          <video
-            autoPlay loop muted playsInline
-            src="https://ppbmdnnnlleoptdinzsn.supabase.co/storage/v1/object/public/suppilami.mp4/suppilami.mp4"
-            style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center top' }}
-          />
-        </div>
-
-        <span style={{
-          fontFamily:"'Syne',sans-serif", fontWeight:800, fontSize:'1.6rem',
-          color:'#fff', lineHeight:1, letterSpacing:'-1px',
-          textShadow:'0 2px 10px rgba(0,0,0,0.35)',
-          animation: ziyaretSayisi !== null ? 'num-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) both' : 'none',
-        }}>
-          {ziyaretSayisi === null
-            ? <span style={{ opacity:0.3, fontSize:'1rem' }}>…</span>
-            : ziyaretSayisi.toLocaleString('tr-TR')
-          }
-        </span>
-
-        <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-          <span style={{ fontFamily:"'Space Grotesk',sans-serif", fontWeight:500, fontSize:'0.6rem', color:'rgba(255,255,255,0.55)', textTransform:'uppercase', letterSpacing:'0.12em' }}>ziyaret</span>
-          <span style={{ color:'rgba(255,255,255,0.25)', fontSize:'0.6rem' }}>·</span>
-          <span style={{ width:6, height:6, borderRadius:'50%', background:'#86efac', display:'inline-block', animation:'live-ping 2s ease-in-out infinite', flexShrink:0 }}/>
-          <span style={{ fontFamily:"'Space Grotesk',sans-serif", fontWeight:500, fontSize:'0.6rem', color:'rgba(255,255,255,0.55)', textTransform:'uppercase', letterSpacing:'0.12em' }}>canlı</span>
-        </div>
-      </div>
-
       {/* Yıldızlar */}
-      <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', pointerEvents:'none' }} preserveAspectRatio="none">
-        {stars.map((s,i) => <circle key={i} cx={`${s.x}%`} cy={`${s.y}%`} r={s.s} fill="white" opacity={starOpacity * 0.8}/>)}
+      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1 }}>
+        {stars.map((s, i) => (
+          <circle key={i} cx={`${s.x}%`} cy={`${s.y}%`} r={s.s} fill="white"
+            opacity={starOpacity * 0.9}
+            style={{ animation: `star-twinkle ${s.d}s ease-in-out infinite`, animationDelay: `${s.delay}s` }}
+          />
+        ))}
       </svg>
 
       {/* Güneş / Ay */}
-      <div style={{ position:'absolute', left:`${sunX}%`, bottom:`${sunY}%`, transform:'translate(-50%,50%)', pointerEvents:'none', zIndex:1 }}>
-        <div style={{ width:isNight?50:60, height:isNight?50:60, borderRadius:'50%', background:isNight?'radial-gradient(circle at 40% 40%, #fffde7, #fff9c4)':`radial-gradient(circle at 40% 40%, white, ${sun})`, boxShadow:isNight?'0 0 20px rgba(255,255,200,0.4)':`0 0 60px ${sun}, 0 0 120px ${sun}88` }}/>
+      <div style={{
+        position: 'absolute', left: `${sunX}%`, bottom: `${sunY}%`,
+        transform: 'translate(-50%, 50%)', pointerEvents: 'none', zIndex: 2,
+        transition: 'left 0.5s linear, bottom 0.5s linear',
+      }}>
+        <div style={{
+          width: isNight ? 50 : 64, height: isNight ? 50 : 64, borderRadius: '50%',
+          background: isNight
+            ? 'radial-gradient(circle at 38% 35%, #fffde7, #fff9c4)'
+            : `radial-gradient(circle at 38% 35%, #ffffff, ${sun}, #ff8c00)`,
+          boxShadow: isNight
+            ? '0 0 20px rgba(255,255,200,0.4)'
+            : `0 0 40px ${sun}, 0 0 80px ${sun}88`,
+          animation: 'sun-glow 3s ease-in-out infinite',
+        }} />
       </div>
 
       {/* Dağlar */}
-      <svg style={{ position:'absolute', bottom:0, left:0, width:'100%', zIndex:2 }} viewBox="0 0 1440 220" preserveAspectRatio="none">
-        <path d="M0,220 L0,130 Q120,60 240,110 Q360,160 480,90 Q600,20 720,100 Q840,170 960,85 Q1080,10 1200,95 Q1320,160 1440,110 L1440,220 Z" fill="#0a0a1a" opacity="0.7"/>
-        <path d="M0,220 L0,165 Q180,110 360,145 Q540,175 720,130 Q900,85 1080,140 Q1260,180 1440,150 L1440,220 Z" fill="#050510" opacity="0.85"/>
+      <svg style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', zIndex: 3 }}
+        viewBox="0 0 1440 220" preserveAspectRatio="none">
+        <path d="M0,220 L0,130 Q120,60 240,110 Q360,160 480,90 Q600,20 720,100 Q840,170 960,85 Q1080,10 1200,95 Q1320,160 1440,110 L1440,220 Z" fill="#0a0a1a" opacity="0.7" />
+        <path d="M0,220 L0,165 Q180,110 360,145 Q540,175 720,130 Q900,85 1080,140 Q1260,180 1440,150 L1440,220 Z" fill="#050510" opacity="0.9" />
       </svg>
 
       {/* Başlık */}
-      <header style={{ textAlign:'center', padding:'28px 16px 12px', position:'relative', zIndex:20 }}>
-        <h1 style={{ fontSize:'clamp(1.1rem,3vw,2.2rem)', color:'#fff', textShadow:'0 2px 16px rgba(0,0,0,0.8)', margin:0 }}>
+      <header style={{ textAlign: 'center', padding: '28px 16px 0', position: 'relative', zIndex: 10 }}>
+        <h1 style={{ fontSize: 'clamp(1rem, 2.5vw, 2rem)', color: '#fff', textShadow: '0 2px 16px rgba(0,0,0,0.8)', margin: 0 }}>
           🎈 Bakırköy BİLSEM
         </h1>
-        <h2 style={{ fontSize:'clamp(0.8rem,2vw,1.4rem)', color:'rgba(255,255,255,0.85)', margin:'4px 0 0', fontWeight:400, textShadow:'0 2px 8px rgba(0,0,0,0.6)' }}>
+        <h2 style={{ fontSize: 'clamp(0.75rem, 1.8vw, 1.2rem)', color: 'rgba(255,255,255,0.8)', margin: '4px 0 0', fontWeight: 400, textShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>
           Dijital Oyun Tasarlama Atölyesi
         </h2>
-        <p style={{ color:'rgba(255,255,255,0.6)', fontSize:'0.85rem', marginTop:8 }}>✨ Bir oda seç, oyunları keşfet!</p>
+        <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.8rem', marginTop: 6 }}>✨ Bir gezegen seç, oyunları keşfet!</p>
       </header>
 
-      {/* ODA KARTLARI */}
-      <div style={{ position:'relative', zIndex:10, display:'flex', flexWrap:'wrap', justifyContent:'center', gap:20, padding:'20px 24px 120px', maxWidth:900, margin:'0 auto' }}>
+      {/* Ziyaret Sayacı */}
+      <div style={{
+        position: 'fixed', left: 16, top: '50%', transform: 'translateY(-50%)',
+        zIndex: 50, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+      }}>
+        <div style={{
+          width: 60, height: 60, borderRadius: '50%', overflow: 'hidden',
+          border: '2px solid rgba(255,255,255,0.3)', background: '#0a0a0a',
+        }}>
+          <video autoPlay loop muted playsInline
+            src="https://ppbmdnnnlleoptdinzsn.supabase.co/storage/v1/object/public/suppilami.mp4/suppilami.mp4"
+            style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }}
+          />
+        </div>
+        <span style={{
+          fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: '1.4rem',
+          color: '#fff', lineHeight: 1, letterSpacing: '-1px',
+          textShadow: '0 2px 10px rgba(0,0,0,0.4)',
+          animation: ziyaretSayisi !== null ? 'num-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) both' : 'none',
+        }}>
+          {ziyaretSayisi === null
+            ? <span style={{ opacity: 0.3, fontSize: '1rem' }}>…</span>
+            : ziyaretSayisi.toLocaleString('tr-TR')
+          }
+        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '0.55rem', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>ziyaret</span>
+          <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.55rem' }}>·</span>
+          <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#86efac', display: 'inline-block', animation: 'live-ping 2s ease-in-out infinite' }} />
+          <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '0.55rem', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>canlı</span>
+        </div>
+      </div>
+
+      {/* GEZEGEN SİSTEMİ */}
+      <div style={{
+        position: 'relative', zIndex: 10,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        width: '100%', height: 'calc(100vh - 140px)', marginTop: 0,
+      }}>
+        {/* Yörünge halkası */}
+        <div style={{
+          position: 'absolute',
+          width: ORBIT_R * 2, height: ORBIT_R * 2,
+          borderRadius: '50%',
+          border: '1px dashed rgba(255,255,255,0.12)',
+          pointerEvents: 'none',
+        }} />
+
+        {/* Merkez güneş (küçük) */}
+        <div style={{
+          position: 'absolute',
+          width: 48, height: 48, borderRadius: '50%',
+          background: 'radial-gradient(circle at 35% 30%, #fffde7, #ffcc02, #ff8c00)',
+          boxShadow: '0 0 24px rgba(255,200,0,0.8), 0 0 50px rgba(255,150,0,0.4)',
+          zIndex: 5,
+        }} />
+
+        {/* Gezegenler */}
         {odalar.length === 0 && (
-          <p style={{ color:'rgba(255,255,255,0.5)', fontSize:'1.1rem', marginTop:60 }}>Odalar yükleniyor... 🎈</p>
+          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '1rem', position: 'absolute' }}>
+            Gezegenler yükleniyor... 🪐
+          </p>
         )}
+
         {odalar.map((oda, i) => {
+          const n = odalar.length;
+          const angleDeg = (360 / n) * i - 90;
+          const angleRad = angleDeg * Math.PI / 180;
+          const cx = Math.cos(angleRad) * ORBIT_R;
+          const cy = Math.sin(angleRad) * ORBIT_R;
+          const style = PLANET_STYLES[i % PLANET_STYLES.length];
           const count = oyunSayilari[oda.id] || 0;
-          const efekt = CARD_STYLES[i % CARD_STYLES.length];
+          const isHovered = hoveredId === oda.id;
+
           return (
-            <Link key={oda.id} href={`/oda/${oda.id}`} style={{ textDecoration:'none' }}>
-              <div className={`oda-card card-${efekt}`}>
-                <div className="card-emoji">{oda.emoji}</div>
-                <div className="card-name">{oda.isim}</div>
-                <div className="card-badge">{count} oyun 🎮</div>
+            <div
+              key={oda.id}
+              onClick={() => router.push(`/oda/${oda.id}`)}
+              onMouseEnter={() => setHoveredId(oda.id)}
+              onMouseLeave={() => setHoveredId(null)}
+              style={{
+                position: 'absolute',
+                left: '50%', top: '50%',
+                marginLeft: cx, marginTop: cy,
+                transform: `translate(-50%, -50%) scale(${isHovered ? 1.2 : 1})`,
+                animation: `float-${i % 5} ${3.2 + i * 0.4}s ease-in-out infinite`,
+                animationDelay: `${i * 0.6}s`,
+                cursor: 'pointer',
+                zIndex: isHovered ? 20 : 10,
+                transition: 'transform 0.25s cubic-bezier(0.34,1.56,0.64,1)',
+              }}
+            >
+              {/* Gezegen topu */}
+              <div style={{
+                width: style.size, height: style.size, borderRadius: '50%',
+                background: `
+                  radial-gradient(circle at 35% 30%, rgba(255,255,255,0.3), transparent 50%),
+                  radial-gradient(circle at 65% 70%, rgba(0,0,0,0.25), transparent 50%),
+                  ${style.color}
+                `,
+                boxShadow: isHovered
+                  ? `${style.shadow}, 0 0 0 3px rgba(255,255,255,0.3)`
+                  : style.shadow,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: style.size * 0.42,
+                filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))',
+                transition: 'box-shadow 0.2s',
+              }}>
+                {oda.emoji}
               </div>
-            </Link>
+
+              {/* İsim etiketi */}
+              <div style={{
+                position: 'absolute',
+                bottom: -(isHovered ? 44 : 38),
+                left: '50%', transform: 'translateX(-50%)',
+                whiteSpace: 'nowrap', textAlign: 'center',
+                transition: 'bottom 0.2s',
+              }}>
+                <div style={{
+                  color: '#fff', fontSize: '0.78rem', fontWeight: 700,
+                  textShadow: '0 1px 8px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.8)',
+                  letterSpacing: '0.02em',
+                }}>
+                  {oda.isim}
+                </div>
+                <div style={{
+                  color: style.color, fontSize: '0.65rem',
+                  textShadow: `0 0 10px ${style.color}`,
+                  marginTop: 2,
+                }}>
+                  {count} oyun 🎮
+                </div>
+              </div>
+            </div>
           );
         })}
       </div>
-
     </main>
   );
 }
