@@ -60,13 +60,39 @@ export default function Home() {
   const starOpacity = t < 0.15 ? (0.15-t)/0.15 : t > 0.85 ? (t-0.85)/0.15 : 0;
   const stars = useRef(Array.from({length:60}, ()=>({ x:Math.random()*100, y:Math.random()*60, s:Math.random()*2+0.5 }))).current;
 
-  // Ziyaret sayacını artır
+  // Ziyaret sayacı — önce oku, +1 artır, göster
   useEffect(() => {
-    supabase.rpc('ziyareti_artir').then(({ data, error }) => {
-      if (!error && data !== null) {
-        setZiyaretSayisi(data);
+    async function sayaciArtir() {
+      // 1. Mevcut değeri oku
+      const { data, error } = await supabase
+        .from('ziyaret_sayaci')
+        .select('sayi')
+        .eq('id', 1)
+        .single();
+
+      if (error) {
+        console.error('Sayaç okuma hatası:', error.message);
+        return;
       }
-    });
+
+      const yeniSayi = (data?.sayi ?? 0) + 1;
+
+      // 2. Yeni değeri kaydet
+      const { error: updateError } = await supabase
+        .from('ziyaret_sayaci')
+        .update({ sayi: yeniSayi })
+        .eq('id', 1);
+
+      if (updateError) {
+        console.error('Sayaç güncelleme hatası:', updateError.message);
+        setZiyaretSayisi(data?.sayi ?? 0);
+        return;
+      }
+
+      setZiyaretSayisi(yeniSayi);
+    }
+
+    sayaciArtir();
   }, []);
 
   // Odaları ve oyun sayılarını çek
@@ -87,7 +113,6 @@ export default function Home() {
     <main style={{ minHeight:'100vh', overflow:'hidden', position:'relative', fontFamily:"'Fredoka One',cursive", background:`linear-gradient(180deg, ${sky1} 0%, ${sky2} 60%, ${horizon} 100%)` }}>
       <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet"/>
 
-      {/* Pulse animasyonu */}
       <style>{`
         @keyframes pulse-dot {
           0%, 100% { opacity: 1; transform: scale(1); }
@@ -118,10 +143,8 @@ export default function Home() {
         boxShadow: '0 8px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08)',
         minWidth: 58,
       }}>
-        {/* Göz ikonu */}
         <div style={{ fontSize: 20, lineHeight: 1, filter: 'drop-shadow(0 0 6px rgba(255,200,80,0.6))' }}>👁️</div>
 
-        {/* Sayı */}
         <div style={{
           color: '#fff',
           fontSize: '1.35rem',
@@ -139,7 +162,6 @@ export default function Home() {
           }
         </div>
 
-        {/* Etiket */}
         <div style={{
           color: 'rgba(255,255,255,0.45)',
           fontSize: '0.55rem',
@@ -151,7 +173,6 @@ export default function Home() {
           ziyaret
         </div>
 
-        {/* Canlı göstergesi — yeşil pulse nokta */}
         <div style={{
           width: 7,
           height: 7,
