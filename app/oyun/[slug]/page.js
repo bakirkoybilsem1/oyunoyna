@@ -37,6 +37,7 @@ export default function OyunPage({ params }) {
       Yükleniyor...
     </div>
   );
+
   if (!oyun) return (
     <div style={{ color: 'white', textAlign: 'center', marginTop: 50 }}>
       Oyun bulunamadı.
@@ -56,34 +57,15 @@ export default function OyunPage({ params }) {
       </header>
 
       {iframeHata && oyun.yedek_url && (
-        <div style={{
-          background: 'linear-gradient(90deg, #1a1a2e, #16213e)',
-          borderBottom: '1px solid rgba(255,200,0,0.3)',
-          padding: '10px 20px',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
-          flexShrink: 0,
-        }}>
-          <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.82rem' }}>
-            ⚠️ Oyun açılmadıysa
-          </span>
-          
-            href={oyun.yedek_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              background: 'linear-gradient(135deg, #ffe600, #ff8c00)',
-              color: '#1a0a00', fontWeight: 700, fontSize: '0.82rem',
-              padding: '5px 14px', borderRadius: 20, textDecoration: 'none',
-              boxShadow: '0 0 12px rgba(255,200,0,0.4)',
-              whiteSpace: 'nowrap',
-            }}
-          >
+        <div style={{ background: 'linear-gradient(90deg, #1a1a2e, #16213e)', borderBottom: '1px solid rgba(255,200,0,0.3)', padding: '10px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, flexShrink: 0 }}>
+          <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.82rem' }}>⚠️ Oyun açılmadıysa</span>
+          <a href={oyun.yedek_url} target="_blank" rel="noopener noreferrer" style={{ background: 'linear-gradient(135deg, #ffe600, #ff8c00)', color: '#1a0a00', fontWeight: 700, fontSize: '0.82rem', padding: '5px 14px', borderRadius: 20, textDecoration: 'none', boxShadow: '0 0 12px rgba(255,200,0,0.4)', whiteSpace: 'nowrap' }}>
             🔗 buraya tıkla
           </a>
         </div>
       )}
 
-      <div style={{ flex: 1, height: `calc(100vh - ${HEADER_H}px)`, overflow: 'hidden' }}>
+      <div style={{ flex: 1, height: 'calc(100vh - ' + HEADER_H + 'px)', overflow: 'hidden' }}>
         {gameUrl ? (
           <iframe
             ref={iframeRef}
